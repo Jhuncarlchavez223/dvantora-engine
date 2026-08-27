@@ -80,6 +80,7 @@ def build(
         "provenance": {
             "weights_version": score.weights_version,
             "coverage": score.coverage,
+            "gates_applied": list(score.gates_applied),
             "prompt_version": analysis.prompt_version,
             "provider": analysis.provider,
             "model": analysis.model,

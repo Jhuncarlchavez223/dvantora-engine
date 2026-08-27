@@ -20,6 +20,7 @@ class AnalysisRequest:
     confidence: float
     signals: list[dict[str, Any]]
     missing_signals: list[str]
+    gates_applied: list[str]
 
 
 @dataclass(frozen=True)

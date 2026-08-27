@@ -58,7 +58,8 @@ def test_complete_run_produces_a_scored_report(client):
     assert len(report["signals"]) == 6  # all six, always
     assert all(s["score"] is not None for s in report["signals"])
     assert report["analysis"]["generator"] == "template"  # no LLM (ADR-0004)
-    assert report["provenance"]["weights_version"] == "0.0-provisional"
+    assert report["provenance"]["weights_version"] == "1.0"
+    assert report["provenance"]["gates_applied"] == []  # nothing capped this verdict
     assert report["businesses"]["available"] is True
     assert report["businesses"]["expires_at"] is not None  # 30-day TTL (02 §6)
     assert report["businesses"]["aggregates"]["business_count"] == 128
@@ -107,6 +108,8 @@ def test_failed_collector_yields_partial_not_failure(client):
     assert any("advertising" in c.lower() for c in report["analysis"]["caveats"])
     assert report["score"]["opportunity_score"] is not None
     assert report["provenance"]["coverage"] < 1.0
+    # Advertising is absent but customer value is present, so G3 must NOT fire (04 §6).
+    assert "G3_no_monetisation_evidence" not in report["provenance"]["gates_applied"]
 
 
 def test_insufficient_evidence_fails_without_inventing_a_score(client):
@@ -173,3 +176,25 @@ def test_health_and_services(client):
     assert client.get("/api/v1/health").json() == {"status": "ok"}
     slugs = {s["slug"] for s in client.get("/api/v1/services").json()["items"]}
     assert {"plumbing", "electrical"} <= slugs
+
+
+def test_declining_market_verdict_is_capped_and_explained(client):
+    """electrical@au-qld-brisbane has a declining trend fixture (04 §6, G4)."""
+    run_id = client.post("/api/v1/runs", json=ELECTRICAL).json()["run_id"]
+    assert _drain() == ["partial"]
+
+    report = client.get(f"/api/v1/runs/{run_id}/report").json()
+    trends = next(s for s in report["signals"] if s["signal"] == "trends")
+    assert trends["band"] == "declining"
+    assert "G4_declining_trend" in report["provenance"]["gates_applied"]
+    assert report["score"]["verdict"] in {"watch", "pass"}
+    assert any("declining" in c.lower() for c in report["analysis"]["caveats"])
+
+
+def test_trend_granularity_is_disclosed_in_the_report(client):
+    """The electrical fixture is measured at state level (07 §7.1)."""
+    run_id = client.post("/api/v1/runs", json=ELECTRICAL).json()["run_id"]
+    _drain()
+    report = client.get(f"/api/v1/runs/{run_id}/report").json()
+    assert report["trend"]["granularity"] == "admin1"
+    assert "coarser than the market" in (report["trend"]["note"] or "")

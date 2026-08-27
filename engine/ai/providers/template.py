@@ -13,7 +13,19 @@ from __future__ import annotations
 from engine.ai.provider import AnalysisRequest, AnalysisResult
 from engine.enums import ReportGenerator
 
-PROMPT_VERSION = "template-0.1"
+PROMPT_VERSION = "template-0.2"
+
+# 04 §6 — a capped verdict must say why, in plain language.
+GATE_EXPLANATIONS: dict[str, str] = {
+    "G1_demand_floor_watch": "Search demand is too low to recommend pursuing this market.",
+    "G1_demand_floor_pass": "Search demand is far below the level that makes a market addressable.",
+    "G2_low_confidence": "Overall confidence is low, so the verdict is held at Watch.",
+    "G3_no_monetisation_evidence": (
+        "Neither advertising activity nor customer value could be established, so there "
+        "is no evidence this market monetises."
+    ),
+    "G4_declining_trend": "Interest in this market is declining, so the verdict is held at Watch.",
+}
 
 
 class TemplateProvider:
@@ -57,12 +69,16 @@ class TemplateProvider:
 
         caveats = [
             "Generated without a language model (template provider).",
-            "Scoring weights are provisional pending 04-signals-and-scoring.md.",
+            "Scoring weights are version 1.0 starting priors, to be recalibrated "
+            "after the first real market runs.",
             "Built from local fixture data, not live market measurements.",
         ]
         caveats += [
             f"{s.replace('_', ' ').capitalize()} could not be collected for this run."
             for s in request.missing_signals
+        ]
+        caveats += [
+            GATE_EXPLANATIONS.get(g, f"Verdict capped by {g}.") for g in request.gates_applied
         ]
 
         return AnalysisResult(

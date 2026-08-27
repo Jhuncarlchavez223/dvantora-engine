@@ -147,7 +147,14 @@ def execute_run(conn: Conn, run_id: str) -> str:
     normalised: list[Normalised] = []
     for signal in SignalKey:
         if signal in collected:
-            normalised.append(normalise(signal, collected[signal], market.population))
+            normalised.append(
+                normalise(
+                    signal,
+                    collected[signal],
+                    market.population,
+                    run["granularity"],
+                )
+            )
         else:
             normalised.append(unavailable(signal, failures.get(signal, "unavailable")))
 
@@ -234,6 +241,7 @@ def execute_run(conn: Conn, run_id: str) -> str:
                 for n in normalised
             ],
             missing_signals=missing,
+            gates_applied=list(score.gates_applied),
         )
     )
     stages.finish(conn, run_id, RunStage.ANALYZE, StageStatus.OK)

@@ -34,9 +34,9 @@ class Settings(BaseSettings):
     # 02 §3.6
     run_lease_seconds: int = 900
 
-    # 04-signals-and-scoring.md is not written; these are provisional.
-    weights_version: str = "0.0-provisional"
-    method_version: str = "0.0-provisional"
+    # 04-signals-and-scoring.md v1.0 starting priors; recalibrate after ~30 real runs.
+    weights_version: str = "1.0"
+    method_version: str = "1.0"
     min_coverage_to_score: float = 0.5
 
     dev_account_email: str = "founder@dvantora.local"
