@@ -156,10 +156,10 @@ product too, and to anything the AI layer generates:
 |---|---|
 | `00-overview.md` | This document — draft |
 | `01-architecture.md` | Approved for decisions 1, 2, 3, 5, 6, 7 · open on decision 4 |
-| `02-data-model.md` | Not written |
+| `02-data-model.md` | **Written — approved** |
 | `03-research-pipeline.md` | Not written |
 | `04-signals-and-scoring.md` | **Written — approved, v1.0 starting priors** |
-| `05-api-contract.md` | Not written |
+| `05-api-contract.md` | **Written — approved** |
 | `06-ai-analysis.md` | Not written |
 | `07-data-sources.md` | **Written — INTERNAL, do not publish** |
 | `08-frontend-integration.md` | Not written |

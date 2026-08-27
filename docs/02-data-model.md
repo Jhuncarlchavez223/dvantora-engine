@@ -1,6 +1,6 @@
 # 02 — Data Model
 
-**Status:** DRAFT — awaiting founder approval
+**Status:** APPROVED — 2026-08-27
 **Last updated:** 2026-08-27
 **Prerequisite reading:** `00-overview.md`, `01-architecture.md`, `07-data-sources.md`
 **Implements:** ADR-0002 (Supabase Postgres), ADR-0005 (7-day freshness)

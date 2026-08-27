@@ -1,6 +1,6 @@
 # 05 — API Contract
 
-**Status:** DRAFT — awaiting founder approval
+**Status:** APPROVED — 2026-08-27
 **Last updated:** 2026-08-27
 **Prerequisite reading:** `01-architecture.md`, `02-data-model.md`
 **Implements:** ADR-0002 (Supabase JWT), ADR-0005 (freshness), ADR-0006 (n8n via public API only)
