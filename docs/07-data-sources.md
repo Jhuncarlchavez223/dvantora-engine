@@ -430,15 +430,12 @@ concurrency allowances for each DataForSEO endpoint family, and record them here
 ## 11. Publication warning
 
 This document contains vendor pricing, cost-per-run economics and source
-strategy. It is currently written into the **website repository**, which
-deploys from its root with `robots.txt` allowing all crawlers — so as it stands
-it would be publicly readable at `dvantora.com/docs/07-data-sources.md`.
-
-Before this file is pushed, do one of:
-
-1. Move `docs/` to the new engine repository (the approved direction), or
-2. Scope the static host's publish directory to `site/`, or
-3. Keep the file uncommitted until (1) or (2) is done.
+strategy. It lives in the **private `dvantora-engine` repository** (ADR-0001)
+and must stay there: it was never published, and it must not be copied into the
+website repository, which deploys from its root with `robots.txt` allowing all
+crawlers. The website repo's `.gitignore` excludes `docs/` as a guard against
+accidental re-introduction. Keep this classification if the file is ever
+excerpted elsewhere.
 
 ---
 

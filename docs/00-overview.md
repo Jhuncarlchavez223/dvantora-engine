@@ -166,9 +166,9 @@ product too, and to anything the AI layer generates:
 | `09-security-privacy.md` | Not written |
 | `adr/0001`–`adr/0006` | Accepted |
 
-⚠️ `docs/` currently sits in the website repository as a working location only.
-Per ADR-0001 it belongs in `dvantora-engine`. Do not commit it to the website
-repo, which deploys from its root with crawling allowed.
+`docs/` lives in the private `dvantora-engine` repository, per ADR-0001. It
+must never be committed to the website repository, which deploys from its root
+with crawling allowed; that repo's `.gitignore` excludes `docs/` as a guard.
 
 ## 10. Open questions
 
