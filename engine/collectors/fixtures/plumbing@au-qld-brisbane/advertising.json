@@ -1,0 +1,12 @@
+{
+  "_note": "Fictional local fixture data for development. Not vendor output, not a real market measurement.",
+  "evidence": [
+    {
+      "payload": {
+        "advertiser_count": 14,
+        "advertiser_growth_90d": 0.18,
+        "ads_on_serp": 3
+      }
+    }
+  ]
+}

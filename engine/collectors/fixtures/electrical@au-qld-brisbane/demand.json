@@ -1,0 +1,63 @@
+{
+  "_note": "Fictional local fixture data for development. Not vendor output, not a real market measurement.",
+  "evidence": [
+    {
+      "payload": {
+        "monthly_searches": 3600,
+        "cpc": 9.1,
+        "competition_index": 48,
+        "seasonality_index": 0.1,
+        "monthly_series": [
+          {
+            "period": "2025-09",
+            "value": 50
+          },
+          {
+            "period": "2025-10",
+            "value": 52
+          },
+          {
+            "period": "2025-11",
+            "value": 55
+          },
+          {
+            "period": "2025-12",
+            "value": 58
+          },
+          {
+            "period": "2026-01",
+            "value": 61
+          },
+          {
+            "period": "2026-02",
+            "value": 57
+          },
+          {
+            "period": "2026-03",
+            "value": 54
+          },
+          {
+            "period": "2026-04",
+            "value": 52
+          },
+          {
+            "period": "2026-05",
+            "value": 53
+          },
+          {
+            "period": "2026-06",
+            "value": 55
+          },
+          {
+            "period": "2026-07",
+            "value": 57
+          },
+          {
+            "period": "2026-08",
+            "value": 59
+          }
+        ]
+      }
+    }
+  ]
+}

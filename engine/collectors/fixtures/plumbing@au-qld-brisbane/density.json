@@ -1,0 +1,47 @@
+{
+  "_note": "Fictional local fixture data for development. Not vendor output, not a real market measurement.",
+  "evidence": [
+    {
+      "payload": {
+        "kind": "aggregates",
+        "business_count": 128,
+        "rating_mean": 4.4,
+        "review_count_median": 61,
+        "share_advertising": 0.28,
+        "share_with_website": 0.71
+      }
+    },
+    {
+      "retention_days": 30,
+      "payload": {
+        "kind": "sample",
+        "businesses": [
+          {
+            "name": "Fixture Plumbing Co",
+            "rating": 4.8,
+            "review_count": 210,
+            "advertising": true
+          },
+          {
+            "name": "Example Drains Pty",
+            "rating": 4.6,
+            "review_count": 132,
+            "advertising": true
+          },
+          {
+            "name": "Sample Hot Water",
+            "rating": 4.4,
+            "review_count": 88,
+            "advertising": false
+          },
+          {
+            "name": "Placeholder Pipes",
+            "rating": 4.1,
+            "review_count": 45,
+            "advertising": false
+          }
+        ]
+      }
+    }
+  ]
+}

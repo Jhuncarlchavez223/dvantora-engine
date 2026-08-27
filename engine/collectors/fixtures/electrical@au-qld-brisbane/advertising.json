@@ -1,0 +1,5 @@
+{
+  "_note": "Fictional local fixture data for development. Not vendor output, not a real market measurement.",
+  "simulate": "error",
+  "reason": "vendor_unavailable"
+}

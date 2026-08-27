@@ -1,0 +1,17 @@
+# Local development only (ADR-0002 defers Supabase; ADR-0003 defers Railway).
+services:
+  postgres:
+    image: postgres:16
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: dvantora
+    ports: ["5432:5432"]
+    volumes: ["dvantora_pgdata:/var/lib/postgresql/data"]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d dvantora"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+volumes:
+  dvantora_pgdata:

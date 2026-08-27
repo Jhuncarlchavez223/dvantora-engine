@@ -1,0 +1,15 @@
+{
+  "_note": "Fictional local fixture data for development. Not vendor output, not a real market measurement.",
+  "evidence": [
+    {
+      "source_url": "https://example.invalid/fixture-price-guide",
+      "payload": {
+        "cpc": 12.4,
+        "cpc_basket_median": 7.1,
+        "published_price_low": 180,
+        "published_price_high": 900,
+        "currency": "AUD"
+      }
+    }
+  ]
+}

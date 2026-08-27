@@ -1,0 +1,15 @@
+{
+  "_note": "Fictional local fixture data for development. Not vendor output, not a real market measurement.",
+  "evidence": [
+    {
+      "payload": {
+        "kind": "aggregates",
+        "business_count": 96,
+        "rating_mean": 4.3,
+        "review_count_median": 40,
+        "share_advertising": 0.19,
+        "share_with_website": 0.66
+      }
+    }
+  ]
+}

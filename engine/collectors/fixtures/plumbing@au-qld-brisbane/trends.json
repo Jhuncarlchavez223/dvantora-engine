@@ -1,0 +1,61 @@
+{
+  "_note": "Fictional local fixture data for development. Not vendor output, not a real market measurement.",
+  "evidence": [
+    {
+      "payload": {
+        "granularity": "city",
+        "yoy_slope": 0.12,
+        "series": [
+          {
+            "period": "2025-09",
+            "value": 64
+          },
+          {
+            "period": "2025-10",
+            "value": 66
+          },
+          {
+            "period": "2025-11",
+            "value": 70
+          },
+          {
+            "period": "2025-12",
+            "value": 88
+          },
+          {
+            "period": "2026-01",
+            "value": 92
+          },
+          {
+            "period": "2026-02",
+            "value": 74
+          },
+          {
+            "period": "2026-03",
+            "value": 68
+          },
+          {
+            "period": "2026-04",
+            "value": 66
+          },
+          {
+            "period": "2026-05",
+            "value": 70
+          },
+          {
+            "period": "2026-06",
+            "value": 72
+          },
+          {
+            "period": "2026-07",
+            "value": 78
+          },
+          {
+            "period": "2026-08",
+            "value": 81
+          }
+        ]
+      }
+    }
+  ]
+}

@@ -1,0 +1,13 @@
+{
+  "_note": "Fictional local fixture data for development. Not vendor output, not a real market measurement.",
+  "evidence": [
+    {
+      "payload": {
+        "distinct_domains": 10,
+        "aggregator_share": 0.3,
+        "local_pack_count": 3,
+        "paid_slots": 2
+      }
+    }
+  ]
+}
