@@ -10,8 +10,10 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
+from fastapi.staticfiles import StaticFiles
 
 from engine.api.routes import meta, runs
+from engine.app import routes as app_routes
 from engine.config import settings
 from engine.errors import ApiError
 
@@ -34,6 +36,14 @@ app = FastAPI(title="Dvantora Engine", version="0.1.0", docs_url="/docs", lifesp
 API_PREFIX = "/api/v1"
 app.include_router(meta.router, prefix=API_PREFIX)
 app.include_router(runs.router, prefix=API_PREFIX)
+
+# Server-rendered app (ADR-0007): HTML pages under /app, same origin as the API.
+app.include_router(app_routes.router)
+app.mount(
+    "/app/static",
+    StaticFiles(directory=app_routes.APP_DIR / "static"),
+    name="app-static",
+)
 
 
 @app.exception_handler(ApiError)

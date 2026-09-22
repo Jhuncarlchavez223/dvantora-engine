@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="en-AU">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex">
+  <title>{% block title %}Dvantora{% endblock %}</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=Instrument+Serif:ital@0;1&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="{{ url_for('app-static', path='/main.css') }}">
+</head>
+<body>
+  <header class="container" style="padding-top: 1.5rem; padding-bottom: 1.5rem;">
+    <a class="brand" href="/app" aria-label="Dvantora — app home">
+      <svg class="brand-mark" viewBox="0 0 64 64" aria-hidden="true" focusable="false">
+        <rect width="64" height="64" rx="14" fill="#0c0f14"></rect>
+        <text x="32" y="41.5" text-anchor="middle" font-family="Georgia, 'Times New Roman', serif" font-size="27" letter-spacing="-0.5" fill="#f5f4ef">DV</text>
+        <rect x="19" y="48" width="26" height="3" rx="1.5" fill="#3cc48e"></rect>
+      </svg>
+      <span class="brand-name">Dvantora</span>
+    </a>
+  </header>
+
+  <main class="container">
+    {% block content %}{% endblock %}
+  </main>
+</body>
+</html>
