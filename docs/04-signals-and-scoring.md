@@ -2,7 +2,7 @@
 
 **Status:** APPROVED (v1.0 starting priors) — 2026-08-27
 **Prerequisite reading:** `00-overview.md`, `02-data-model.md`, `07-data-sources.md`
-**Implements:** `weights_version = "1.0"`, `method_version = "1.0"`
+**Implements:** `weights_version = "1.0"`, `method_version = "1.1"` (1.1 added the live Advertising input in §4.3; weights and thresholds unchanged)
 
 This document defines how evidence becomes a number. It is the product.
 
@@ -124,6 +124,47 @@ advertiser count is rising is being validated by people spending their own money
 
 Band: `growing` if growth > 0.05, `declining` if < −0.05, otherwise by score.
 Confidence 0.70.
+
+#### Live input — ad-slot fill (method 1.1, approved 2026-09-23)
+
+Google Ads Keyword Planner provides `competition_index`, which Google defines as
+*"how competitive ad placement is for a keyword … the number of ad slots filled
+divided by the total number of ad slots available"*, from 0 to 100. It measures
+**how full the ad space is**. It does not measure how many advertisers there are,
+or whether that number is growing. Per `07 §3`, it belongs to Advertising
+activity, not Competition.
+
+When live evidence carries `competition_index` instead of an advertiser count:
+
+```
+p     = competition_index / 100                  share of ad slots filled, 0-1
+base  = 100 × (1 − ((p − 0.55) / 0.55)²)         the same inverted U and peak
+score = clamp(base)                              no momentum term
+```
+
+| Ad slots filled | Score |
+|---:|---:|
+| 0 | 0 |
+| 20 | 60 |
+| 41 | 94 |
+| 55 | 100 |
+| 70 | 93 |
+| 85 | 70 |
+| 100 | 33 |
+
+- **No momentum term.** Google gives no growth figure, so there is no ±15 bonus
+  or penalty.
+- **Confidence 0.60**, below the 0.70 of the full design, because this is one
+  measurement where the design wants three (count, growth, fill).
+- **Honest wording.** Headlines describe ad-slot fill ("Ad slots crowded",
+  "Healthy ad competition", "Few ads competing", "No ads competing") and never
+  "advertiser count rising". The note states count and growth are not measured.
+- **No data means unavailable.** When Google returns no `competition_index`, the
+  signal is unavailable. It is never treated as 0, which would falsely mean "no
+  ads at all".
+
+The advertiser-count path above is unchanged and still applies to evidence that
+carries `advertiser_count`.
 
 ### 4.4 Business density — saturating, rise then plateau
 
