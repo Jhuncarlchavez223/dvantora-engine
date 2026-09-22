@@ -14,8 +14,8 @@ from typing import Any
 from psycopg.types.json import Json
 
 from engine.ai.provider import AnalysisRequest, get_provider
+from engine.collectors import build_collectors
 from engine.collectors.base import MarketRef
-from engine.collectors.fixture import build_collectors
 from engine.config import settings
 from engine.db import Conn, require
 from engine.enums import (
@@ -62,7 +62,15 @@ def _load_run(conn: Conn, run_id: str) -> dict[str, Any] | None:
     ).fetchone()
 
 
-def _store_evidence(conn: Conn, run_id: str, market_id: str, result: Any) -> None:
+def _store_evidence(
+    conn: Conn,
+    run_id: str,
+    market_id: str,
+    result: Any,
+    collector_name: str,
+) -> None:
+    # Store the actual collector name so live Google evidence is never
+    # incorrectly labelled as fixture evidence.
     conn.execute(
         """
         INSERT INTO evidence (run_id, market_id, signal, collector, vendor, endpoint,
@@ -76,7 +84,7 @@ def _store_evidence(conn: Conn, run_id: str, market_id: str, result: Any) -> Non
             run_id,
             market_id,
             result.signal.value,
-            f"fixture.{result.signal.value}",
+            collector_name,
             result.vendor,
             result.endpoint,
             result.status.value,
@@ -109,22 +117,43 @@ def execute_run(conn: Conn, run_id: str) -> str:
     for collector in build_collectors():
         stage = SIGNAL_STAGES[collector.signal]
         stages.start(conn, run_id, stage)
+
         try:
             results = collector.collect(market)
-        except Exception as exc:  # a collector must never end the run
+        except Exception as exc:  # A collector must never end the run.
             log.warning("collector %s raised: %s", collector.name, exc)
             failures[collector.signal] = "collector_exception"
-            stages.finish(conn, run_id, stage, StageStatus.FAILED, "collector_exception", str(exc))
+            stages.finish(
+                conn,
+                run_id,
+                stage,
+                StageStatus.FAILED,
+                "collector_exception",
+                str(exc),
+            )
             continue
 
         ok_payloads = []
+
         for result in results:
-            _store_evidence(conn, run_id, market.market_id, result)
+            # Preserve the true collector provenance.
+            _store_evidence(
+                conn,
+                run_id,
+                market.market_id,
+                result,
+                collector.name,
+            )
+
             spend += float(result.cost_cents)
+
             if result.status is EvidenceStatus.OK:
                 ok_payloads.append(result.payload)
             else:
-                failures[collector.signal] = result.payload.get("reason", result.status.value)
+                failures[collector.signal] = result.payload.get(
+                    "reason",
+                    result.status.value,
+                )
 
         if ok_payloads:
             collected[collector.signal] = ok_payloads
@@ -138,13 +167,22 @@ def execute_run(conn: Conn, run_id: str) -> str:
                 failures.get(collector.signal, "unavailable"),
             )
 
-    conn.execute("UPDATE research_runs SET spend_cents=%s WHERE id=%s", (int(spend), run_id))
+    conn.execute(
+        "UPDATE research_runs SET spend_cents=%s WHERE id=%s",
+        (int(spend), run_id),
+    )
 
     # ---------------------------------------------------------------- score
-    queue.set_status(conn, run_id, RunStatus.SCORING, stage=RunStage.SCORE.value)
+    queue.set_status(
+        conn,
+        run_id,
+        RunStatus.SCORING,
+        stage=RunStage.SCORE.value,
+    )
     stages.start(conn, run_id, RunStage.SCORE)
 
     normalised: list[Normalised] = []
+
     for signal in SignalKey:
         if signal in collected:
             normalised.append(
@@ -156,7 +194,12 @@ def execute_run(conn: Conn, run_id: str) -> str:
                 )
             )
         else:
-            normalised.append(unavailable(signal, failures.get(signal, "unavailable")))
+            normalised.append(
+                unavailable(
+                    signal,
+                    failures.get(signal, "unavailable"),
+                )
+            )
 
     for n in normalised:
         conn.execute(
@@ -165,8 +208,11 @@ def execute_run(conn: Conn, run_id: str) -> str:
                                  method_version, notes)
             VALUES (%s,%s,%s,%s,%s,%s::jsonb,%s,%s)
             ON CONFLICT (run_id, signal) DO UPDATE
-              SET score=EXCLUDED.score, confidence=EXCLUDED.confidence, band=EXCLUDED.band,
-                  inputs=EXCLUDED.inputs, notes=EXCLUDED.notes
+              SET score=EXCLUDED.score,
+                  confidence=EXCLUDED.confidence,
+                  band=EXCLUDED.band,
+                  inputs=EXCLUDED.inputs,
+                  notes=EXCLUDED.notes
             """,
             (
                 run_id,
@@ -183,10 +229,23 @@ def execute_run(conn: Conn, run_id: str) -> str:
     try:
         score = compute(normalised)
     except InsufficientEvidence as exc:
-        # 00 §5: no score is invented from too little evidence.
-        stages.finish(conn, run_id, RunStage.SCORE, StageStatus.FAILED, "insufficient_evidence")
+        # No score is invented when evidence coverage is too low.
+        stages.finish(
+            conn,
+            run_id,
+            RunStage.SCORE,
+            StageStatus.FAILED,
+            "insufficient_evidence",
+        )
+
         for stage in (RunStage.ANALYZE, RunStage.FINALIZE):
-            stages.finish(conn, run_id, stage, StageStatus.SKIPPED)
+            stages.finish(
+                conn,
+                run_id,
+                stage,
+                StageStatus.SKIPPED,
+            )
+
         queue.set_status(
             conn,
             run_id,
@@ -195,7 +254,16 @@ def execute_run(conn: Conn, run_id: str) -> str:
             error_code="insufficient_evidence",
             error_detail=f"signal coverage {exc.coverage:.2f} below minimum",
         )
-        queue.emit_event(conn, "run.failed", {"run_id": run_id, "reason": "insufficient_evidence"})
+
+        queue.emit_event(
+            conn,
+            "run.failed",
+            {
+                "run_id": run_id,
+                "reason": "insufficient_evidence",
+            },
+        )
+
         conn.commit()
         return RunStatus.FAILED.value
 
@@ -204,8 +272,10 @@ def execute_run(conn: Conn, run_id: str) -> str:
         INSERT INTO scores (run_id, opportunity_score, verdict, confidence, weights_version)
         VALUES (%s,%s,%s,%s,%s)
         ON CONFLICT (run_id) DO UPDATE
-          SET opportunity_score=EXCLUDED.opportunity_score, verdict=EXCLUDED.verdict,
-              confidence=EXCLUDED.confidence, weights_version=EXCLUDED.weights_version,
+          SET opportunity_score=EXCLUDED.opportunity_score,
+              verdict=EXCLUDED.verdict,
+              confidence=EXCLUDED.confidence,
+              weights_version=EXCLUDED.weights_version,
               computed_at=now()
         """,
         (
@@ -216,14 +286,36 @@ def execute_run(conn: Conn, run_id: str) -> str:
             score.weights_version,
         ),
     )
-    stages.finish(conn, run_id, RunStage.SCORE, StageStatus.OK)
+
+    stages.finish(
+        conn,
+        run_id,
+        RunStage.SCORE,
+        StageStatus.OK,
+    )
 
     # ---------------------------------------------------------------- analyse
-    queue.set_status(conn, run_id, RunStatus.ANALYZING, stage=RunStage.ANALYZE.value)
-    stages.start(conn, run_id, RunStage.ANALYZE)
+    queue.set_status(
+        conn,
+        run_id,
+        RunStatus.ANALYZING,
+        stage=RunStage.ANALYZE.value,
+    )
 
-    missing = [n.signal.value for n in normalised if n.score is None]
+    stages.start(
+        conn,
+        run_id,
+        RunStage.ANALYZE,
+    )
+
+    missing = [
+        n.signal.value
+        for n in normalised
+        if n.score is None
+    ]
+
     provider = get_provider(settings.ai_provider)
+
     analysis = provider.analyse(
         AnalysisRequest(
             market_display_name=market.display_name,
@@ -244,30 +336,59 @@ def execute_run(conn: Conn, run_id: str) -> str:
             gates_applied=list(score.gates_applied),
         )
     )
-    stages.finish(conn, run_id, RunStage.ANALYZE, StageStatus.OK)
+
+    stages.finish(
+        conn,
+        run_id,
+        RunStage.ANALYZE,
+        StageStatus.OK,
+    )
 
     # ---------------------------------------------------------------- finalise
-    stages.start(conn, run_id, RunStage.FINALIZE)
+    stages.start(
+        conn,
+        run_id,
+        RunStage.FINALIZE,
+    )
 
     sample_expiry = require(
         conn.execute(
-            "SELECT max(expires_at) AS e FROM evidence WHERE run_id=%s AND expires_at IS NOT NULL",
+            """
+            SELECT max(expires_at) AS e
+            FROM evidence
+            WHERE run_id=%s
+              AND expires_at IS NOT NULL
+            """,
             (run_id,),
         ).fetchone()
     )["e"]
 
     sources = conn.execute(
-        "SELECT DISTINCT signal::text AS signal, vendor, max(fetched_at) AS fetched_at "
-        "FROM evidence WHERE run_id=%s AND status='ok' GROUP BY signal, vendor",
+        """
+        SELECT DISTINCT signal::text AS signal,
+                        vendor,
+                        max(fetched_at) AS fetched_at
+        FROM evidence
+        WHERE run_id=%s
+          AND status='ok'
+        GROUP BY signal, vendor
+        """,
         (run_id,),
     ).fetchall()
 
-    trend_payloads = collected.get(SignalKey.TRENDS, [])
+    trend_payloads = collected.get(
+        SignalKey.TRENDS,
+        [],
+    )
+
     payload = build_report(
         run=run,
         market={
             "market_key": market.market_key,
-            "service": {"slug": run["service_slug"], "display_name": run["service_name"]},
+            "service": {
+                "slug": run["service_slug"],
+                "display_name": run["service_name"],
+            },
             "location": {
                 "slug": run["location_slug"],
                 "display_name": run["location_name"],
@@ -277,16 +398,27 @@ def execute_run(conn: Conn, run_id: str) -> str:
         normalised=normalised,
         score=score,
         analysis=analysis,
-        density_payloads=collected.get(SignalKey.DENSITY, []),
-        trend_payload=trend_payloads[0] if trend_payloads else None,
-        sample_expires_at=sample_expiry.isoformat() if sample_expiry else None,
+        density_payloads=collected.get(
+            SignalKey.DENSITY,
+            [],
+        ),
+        trend_payload=(
+            trend_payloads[0]
+            if trend_payloads
+            else None
+        ),
+        sample_expires_at=(
+            sample_expiry.isoformat()
+            if sample_expiry
+            else None
+        ),
         sources=[
             {
-                "signal": s["signal"],
-                "vendor": s["vendor"],
-                "fetched_at": s["fetched_at"].isoformat(),
+                "signal": source["signal"],
+                "vendor": source["vendor"],
+                "fetched_at": source["fetched_at"].isoformat(),
             }
-            for s in sources
+            for source in sources
         ],
         data_age_hours=0.0,
     )
@@ -296,7 +428,8 @@ def execute_run(conn: Conn, run_id: str) -> str:
         INSERT INTO reports (run_id, payload, generator, provider, model, prompt_version)
         VALUES (%s,%s::jsonb,%s,%s,%s,%s)
         ON CONFLICT (run_id) DO UPDATE
-          SET payload=EXCLUDED.payload, generator=EXCLUDED.generator,
+          SET payload=EXCLUDED.payload,
+              generator=EXCLUDED.generator,
               generated_at=now()
         """,
         (
@@ -309,37 +442,76 @@ def execute_run(conn: Conn, run_id: str) -> str:
         ),
     )
 
-    final = RunStatus.PARTIAL if missing else RunStatus.COMPLETE
-    stages.finish(conn, run_id, RunStage.FINALIZE, StageStatus.OK)
-    queue.set_status(conn, run_id, final, stage=RunStage.FINALIZE.value)
+    final = (
+        RunStatus.PARTIAL
+        if missing
+        else RunStatus.COMPLETE
+    )
+
+    stages.finish(
+        conn,
+        run_id,
+        RunStage.FINALIZE,
+        StageStatus.OK,
+    )
+
+    queue.set_status(
+        conn,
+        run_id,
+        final,
+        stage=RunStage.FINALIZE.value,
+    )
+
     queue.emit_event(
         conn,
         "run.completed",
-        {"run_id": run_id, "status": final.value, "market_key": market.market_key},
+        {
+            "run_id": run_id,
+            "status": final.value,
+            "market_key": market.market_key,
+        },
     )
+
     conn.commit()
     return final.value
 
 
-def run_forever(poll_seconds: float = 2.0) -> None:  # pragma: no cover - dev loop
+def run_forever(poll_seconds: float = 2.0) -> None:
+    """Continuously claim and execute queued research runs."""
     from engine.db import connection
 
     worker_id = f"worker-{os.getpid()}"
-    log.info("worker %s started (collector_mode=%s)", worker_id, settings.collector_mode)
+
+    log.info(
+        "worker %s started (collector_mode=%s)",
+        worker_id,
+        settings.collector_mode,
+    )
+
     while True:
         with connection() as conn:
             queue.reap_stuck(conn)
             claimed = queue.claim_next(conn, worker_id)
             conn.commit()
+
         if claimed is None:
             time.sleep(poll_seconds)
             continue
+
         with connection() as conn:
             try:
-                execute_run(conn, str(claimed["id"]))
+                execute_run(
+                    conn,
+                    str(claimed["id"]),
+                )
             except Exception as exc:
                 conn.rollback()
-                log.exception("run %s crashed", claimed["id"])
+
+                log.exception(
+                    "run %s crashed",
+                    claimed["id"],
+                )
+
                 queue.set_status(
                     conn,
                     str(claimed["id"]),
@@ -347,9 +519,10 @@ def run_forever(poll_seconds: float = 2.0) -> None:  # pragma: no cover - dev lo
                     error_code="worker_error",
                     error_detail=str(exc),
                 )
+
                 conn.commit()
 
 
-if __name__ == "__main__":  # pragma: no cover
+if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO)
     run_forever()
