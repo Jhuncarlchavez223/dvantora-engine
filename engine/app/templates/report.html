@@ -111,7 +111,7 @@
 
     {% if report.trend %}
       <h2 class="dv-h2">Trend</h2>
-      <p>Measured at <strong>{{ report.trend.granularity }}</strong> level.</p>
+      <p>Measured at <strong>{{ {"admin1": "state"}.get(report.trend.granularity, report.trend.granularity) }}</strong> level.</p>
       {% if report.trend.note %}<p class="dv-note">{{ report.trend.note }}</p>{% endif %}
     {% endif %}
 

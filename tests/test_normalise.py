@@ -171,3 +171,21 @@ def test_no_payload_yields_an_explicit_unavailable_signal():
 
 def test_unavailable_records_the_reason():
     assert "vendor_unavailable" in (unavailable(SignalKey.DEMAND, "vendor_unavailable").notes or "")
+
+
+def test_trend_headline_matches_its_band():
+    up = normalise(SignalKey.TRENDS, [{"yoy_slope": 0.2, "granularity": "city"}])
+    down = normalise(SignalKey.TRENDS, [{"yoy_slope": -0.2, "granularity": "city"}])
+    flat = normalise(SignalKey.TRENDS, [{"yoy_slope": 0.0, "granularity": "city"}])
+    assert (up.band, up.headline) == (SignalBand.GROWING, "Interest trending up")
+    assert (down.band, down.headline) == (SignalBand.DECLINING, "Interest declining")
+    assert (flat.band, flat.headline) == (SignalBand.MODERATE, "Interest broadly flat")
+
+
+def test_trend_note_uses_plain_words_not_admin1():
+    result = normalise(
+        SignalKey.TRENDS, [{"yoy_slope": 0.1, "granularity": "admin1"}], market_granularity="city"
+    )
+    assert "state level" in (result.notes or "")
+    assert "admin1" not in (result.notes or "")
+    assert result.inputs["granularity"] == "admin1"  # stored code unchanged

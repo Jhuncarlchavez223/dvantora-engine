@@ -53,6 +53,13 @@ VALUE_CONFIDENCE_CAP = 0.45  # 07 §6.5 — structurally lower ceiling
 TREND_SLOPE_GAIN = 200.0
 TREND_GROWING_AT = 0.03
 TREND_CONFIDENCE = 0.70
+# How a stored geography level reads to a person (Australia: admin1 = state).
+GRANULARITY_WORDS: dict[str, str] = {
+    "suburb": "suburb",
+    "city": "city",
+    "admin1": "state",
+    "country": "country",
+}
 GRANULARITY_PENALTY: dict[str, float] = {
     "city": 1.00,
     "suburb": 1.00,
@@ -277,12 +284,22 @@ def _trends(p: dict[str, Any], market_granularity: str | None) -> Normalised:
     penalty = GRANULARITY_PENALTY.get(measured_at, 0.6)
     confidence = round(TREND_CONFIDENCE * penalty, 3)
 
-    notes = f"Trend measured at {measured_at} level."
+    # Plain words for people; the stored code (e.g. "admin1") is kept in inputs.
+    measured_words = GRANULARITY_WORDS.get(measured_at, measured_at)
+    notes = f"Trend measured at {measured_words} level."
     if market_granularity and measured_at != market_granularity:
+        market_words = GRANULARITY_WORDS.get(market_granularity, market_granularity)
         notes = (
-            f"Trend measured at {measured_at} level, coarser than the market "
-            f"({market_granularity}); confidence reduced."
+            f"Trend measured at {measured_words} level, coarser than the market "
+            f"({market_words}); confidence reduced."
         )
+
+    if band is SignalBand.GROWING:
+        headline = "Interest trending up"
+    elif band is SignalBand.DECLINING:
+        headline = "Interest declining"
+    else:
+        headline = "Interest broadly flat"
 
     return Normalised(
         signal=SignalKey.TRENDS,
@@ -290,7 +307,7 @@ def _trends(p: dict[str, Any], market_granularity: str | None) -> Normalised:
         band=band,
         confidence=confidence,
         inputs={"yoy_slope": slope, "granularity": measured_at},
-        headline=("Interest trending up" if slope > TREND_GROWING_AT else "Interest broadly flat"),
+        headline=headline,
         notes=notes,
     )
 
