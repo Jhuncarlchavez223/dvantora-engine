@@ -4,6 +4,8 @@ import os
 
 import pytest
 
+os.environ["DVANTORA_COLLECTOR_MODE"] = "fixture"
+
 os.environ.setdefault("DVANTORA_ENV", "local")
 os.environ.setdefault(
     "DVANTORA_DATABASE_URL",

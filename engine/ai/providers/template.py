@@ -71,7 +71,7 @@ class TemplateProvider:
             "Generated without a language model (template provider).",
             "Scoring weights are version 1.0 starting priors, to be recalibrated "
             "after the first real market runs.",
-            "Built from local fixture data, not live market measurements.",
+            "Signal source details are listed in the report provenance.",
         ]
         caveats += [
             f"{s.replace('_', ' ').capitalize()} could not be collected for this run."
