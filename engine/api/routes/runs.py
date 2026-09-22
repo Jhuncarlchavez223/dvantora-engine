@@ -11,10 +11,11 @@ from pydantic import BaseModel, Field
 from engine.api.deps import current_account
 from engine.config import settings
 from engine.db import Conn, connection, require
-from engine.enums import ALL_STAGES, TERMINAL_STATUSES, RunStatus, RunTrigger
-from engine.errors import forbidden, invalid_request, not_found, quota_exceeded, report_not_ready
+from engine.enums import ALL_STAGES, TERMINAL_STATUSES, RunStatus
+from engine.errors import forbidden, invalid_request, not_found, report_not_ready
 from engine.markets import resolver
 from engine.pipeline import queue
+from engine.pipeline.start import start_run
 
 router = APIRouter()
 
@@ -37,63 +38,42 @@ def _market_block(res: resolver.Resolution) -> dict[str, Any]:
     }
 
 
-def _quota_used(conn: Conn, account_id: str) -> int:
-    return int(
-        require(
-            conn.execute(
-                "SELECT count(*) AS c FROM research_runs "
-                "WHERE requested_by=%s AND requested_at >= date_trunc('month', now())",
-                (account_id,),
-            ).fetchone()
-        )["c"]
-    )
-
-
 @router.post("/runs")
 def create_run(
     body: CreateRunRequest,
     response: Response,
     idempotency_key: str | None = Header(default=None, alias="Idempotency-Key"),
 ) -> dict[str, Any]:
-    if not body.market_key and not (body.service and body.location):
-        raise invalid_request("Provide either market_key, or both service and location.")
-
     with connection() as conn:
         account = current_account(conn)
-        res = (
-            resolver.resolve_by_key(conn, body.market_key)
-            if body.market_key
-            else resolver.resolve(conn, body.service or "", body.location or "")
+        started = start_run(
+            conn,
+            account,
+            service=body.service,
+            location=body.location,
+            market_key=body.market_key,
+            force_refresh=body.force_refresh,
+            idempotency_key=idempotency_key,
         )
 
-        if not body.force_refresh:
-            fresh = queue.find_fresh_run(conn, res.market_id)
-            if fresh:
-                conn.commit()
-                response.status_code = 200
-                return {
-                    "run_id": str(fresh["id"]),
-                    "status": fresh["status"],
-                    "reused": True,
-                    "data_age_hours": round(float(fresh["age_hours"]), 2),
-                    "freshness_window_hours": settings.freshness_window_hours,
-                    "market": _market_block(res),
-                    "report_url": f"/api/v1/runs/{fresh['id']}/report",
-                }
-
-        if _quota_used(conn, account["id"]) >= account["run_quota_month"]:
-            raise quota_exceeded()
-
-        trigger = RunTrigger.FORCED_REFRESH if body.force_refresh else RunTrigger.USER
-        run = queue.enqueue(conn, res.market_id, str(account["id"]), trigger, idempotency_key)
-        conn.commit()
+    if started.reused:
+        response.status_code = 200
+        return {
+            "run_id": started.run_id,
+            "status": started.status,
+            "reused": True,
+            "data_age_hours": started.data_age_hours,
+            "freshness_window_hours": settings.freshness_window_hours,
+            "market": _market_block(started.resolution),
+            "report_url": f"/api/v1/runs/{started.run_id}/report",
+        }
 
     response.status_code = 202
     return {
-        "run_id": str(run["id"]),
-        "status": run["status"],
+        "run_id": started.run_id,
+        "status": started.status,
         "reused": False,
-        "market": _market_block(res),
+        "market": _market_block(started.resolution),
         "poll_after_ms": POLL_AFTER_MS,
     }
 
