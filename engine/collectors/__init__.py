@@ -3,6 +3,7 @@ from __future__ import annotations
 from engine.collectors.base import Collector
 from engine.collectors.fixture import FixtureCollector
 from engine.collectors.google_ads_demand import GoogleAdsDemandCollector
+from engine.collectors.google_ads_value import GoogleAdsCustomerValueCollector
 from engine.config import settings
 from engine.enums import SignalKey
 
@@ -15,12 +16,12 @@ def build_collectors() -> list[Collector]:
         return [FixtureCollector(signal) for signal in SignalKey]
 
     if settings.collector_mode == "hybrid":
-        return [
-            GoogleAdsDemandCollector()
-            if signal is SignalKey.DEMAND
-            else FixtureCollector(signal)
-            for signal in SignalKey
-        ]
+        # Live where a verified collector exists; example data everywhere else.
+        live: dict[SignalKey, Collector] = {
+            SignalKey.DEMAND: GoogleAdsDemandCollector(),
+            SignalKey.CUSTOMER_VALUE: GoogleAdsCustomerValueCollector(),
+        }
+        return [live.get(signal) or FixtureCollector(signal) for signal in SignalKey]
 
     raise ValueError(f"Unsupported collector mode: {settings.collector_mode}")
 
