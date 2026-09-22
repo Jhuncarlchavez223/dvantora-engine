@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -10,6 +11,11 @@ class Settings(BaseSettings):
 
     env: str = "local"
     database_url: str = "postgresql://postgres@localhost:5432/dvantora"
+    # Google Ads OAuth/API configuration is loaded from the local .env file.
+    google_ads_client_id: str = Field(default="", validation_alias="GOOGLE_ADS_CLIENT_ID")
+    google_ads_client_secret: str = Field(default="", validation_alias="GOOGLE_ADS_CLIENT_SECRET")
+    google_ads_refresh_token: str = Field(default="", validation_alias="GOOGLE_ADS_REFRESH_TOKEN")
+    google_ads_customer_id: str = Field(default="", validation_alias="GOOGLE_ADS_CUSTOMER_ID")
 
     # ADR-0005
     freshness_window_hours: int = 168

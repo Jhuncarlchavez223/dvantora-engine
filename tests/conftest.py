@@ -7,7 +7,7 @@ import pytest
 os.environ.setdefault("DVANTORA_ENV", "local")
 os.environ.setdefault(
     "DVANTORA_DATABASE_URL",
-    os.environ.get("TEST_DATABASE_URL", "postgresql://postgres@localhost:5432/dvantora"),
+    os.environ.get("TEST_DATABASE_URL", "postgresql://postgres:postgres@localhost:5432/dvantora"),
 )
 
 from engine import db  # noqa: E402
