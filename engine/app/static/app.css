@@ -1,0 +1,142 @@
+/* Dvantora app — styles specific to the app.
+   main.css is an unmodified copy of the marketing site's stylesheet; keep
+   app-only rules here so that copy can be refreshed without merging. */
+
+.dv-header {
+  padding-top: 1.5rem;
+  padding-bottom: 1.5rem;
+}
+
+.dv-section {
+  padding-top: 3rem;
+  padding-bottom: 4rem;
+  max-width: 44rem;
+}
+
+.dv-title {
+  font-family: var(--font-serif);
+  font-weight: 400;
+  font-size: clamp(2.25rem, 5.5vw, 3.75rem);
+  line-height: 1.05;
+  margin: 0.5rem 0 1rem;
+}
+
+.dv-lede {
+  max-width: 36rem;
+}
+
+/* Form */
+.dv-form {
+  display: grid;
+  gap: 1.25rem;
+  margin-top: 2rem;
+  max-width: 28rem;
+}
+
+.dv-field {
+  display: grid;
+  gap: 0.4rem;
+}
+
+.dv-field label {
+  font-size: 0.9rem;
+  font-weight: 500;
+  color: var(--ink-2);
+}
+
+.dv-field input {
+  font: inherit;
+  padding: 0.75rem 0.9rem;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--r-sm);
+  background: var(--paper-raise);
+  color: var(--ink);
+}
+
+.dv-field input:focus {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+  border-color: var(--accent);
+}
+
+.dv-form .btn {
+  justify-self: start;
+}
+
+/* Messages */
+.dv-alert {
+  margin-top: 1.75rem;
+  padding: 1rem 1.25rem;
+  border: 1px solid var(--signal-amber);
+  border-radius: var(--r-md);
+  background: var(--paper-raise);
+}
+
+.dv-alert p {
+  margin: 0 0 0.5rem;
+}
+
+.dv-candidates {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.dv-note {
+  color: var(--ink-3);
+  font-size: 0.95rem;
+}
+
+/* Run status */
+.dv-status {
+  display: inline-block;
+  padding: 0.3rem 0.8rem;
+  border-radius: 999px;
+  font-size: 0.9rem;
+  font-weight: 500;
+  background: var(--line);
+  color: var(--ink-2);
+}
+
+.dv-status--complete {
+  background: var(--accent-tint);
+  color: var(--accent-strong);
+}
+
+.dv-status--partial {
+  background: #f6ecd6;
+  color: #7a5714;
+}
+
+.dv-status--failed {
+  background: #f5dede;
+  color: #8a2a2a;
+}
+
+.dv-stages {
+  list-style: none;
+  padding: 0;
+  margin: 1.5rem 0;
+  border-top: 1px solid var(--line);
+}
+
+.dv-stage {
+  display: flex;
+  justify-content: space-between;
+  padding: 0.6rem 0;
+  border-bottom: 1px solid var(--line);
+}
+
+.dv-stage-status {
+  font-family: var(--font-mono);
+  font-size: 0.85rem;
+  color: var(--ink-3);
+}
+
+.dv-stage--ok .dv-stage-status {
+  color: var(--accent);
+}
+
+.dv-stage--failed .dv-stage-status {
+  color: #8a2a2a;
+}

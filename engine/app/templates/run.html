@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+
+{% block title %}{{ run.market.service.display_name }} — {{ run.market.location.display_name }} · Dvantora{% endblock %}
+
+{% block content %}
+  <section class="dv-section">
+    <p class="eyebrow">Research run</p>
+    <h1 class="dv-title">{{ run.market.service.display_name }} — {{ run.market.location.display_name }}</h1>
+
+    <p class="dv-status dv-status--{{ run.status }}">
+      {{ status_labels.get(run.status, run.status) }}
+    </p>
+
+    {% if reused %}
+      <p class="dv-note">
+        Recent research for this market was reused, so no new data was collected.
+      </p>
+    {% endif %}
+
+    {% if run.status == "queued" %}
+      <p class="dv-note">
+        Waiting for the worker to pick this up. If the worker isn't running, the run
+        stays queued.
+      </p>
+    {% endif %}
+
+    <ol class="dv-stages">
+      {% for s in run.stages %}
+        <li class="dv-stage dv-stage--{{ s.status }}">
+          <span>{{ stage_labels.get(s.stage, s.stage) }}</span>
+          <span class="dv-stage-status">{{ s.status }}</span>
+        </li>
+      {% endfor %}
+    </ol>
+
+    <p class="dv-note">This page doesn't update by itself yet — refresh to see progress.</p>
+    <p><a class="btn btn-ghost" href="/app">Research another market</a></p>
+  </section>
+{% endblock %}

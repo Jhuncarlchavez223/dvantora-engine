@@ -3,14 +3,44 @@
 {% block title %}Dvantora — Market research{% endblock %}
 
 {% block content %}
-  <section style="padding-top: 3rem; padding-bottom: 4rem;">
+  <section class="dv-section">
     <p class="eyebrow">Development build</p>
-    <h1 style="font-family: var(--font-serif); font-weight: 400; font-size: clamp(2.5rem, 6vw, 4rem); line-height: 1.05; margin: 0.5rem 0 1rem;">
-      Is this market worth investigating?
-    </h1>
-    <p class="lede" style="max-width: 36rem;">
-      Dvantora researches one service in one location and turns the evidence into
-      an opportunity score and a report. The analysis form is coming next.
+    <h1 class="dv-title">Is this market worth investigating?</h1>
+    <p class="lede dv-lede">
+      Enter one service and one location. Dvantora researches the market and turns
+      the evidence into an opportunity score and a report that lists where every
+      signal came from.
     </p>
+
+    <form class="dv-form" method="post" action="/app/runs">
+      <div class="dv-field">
+        <label for="service">Service</label>
+        <input id="service" name="service" type="text" value="{{ service }}"
+               placeholder="e.g. Plumbing" autocomplete="off" required>
+      </div>
+      <div class="dv-field">
+        <label for="location">Location</label>
+        <input id="location" name="location" type="text" value="{{ location }}"
+               placeholder="e.g. Brisbane, QLD" autocomplete="off" required>
+      </div>
+      <button class="btn btn-primary" type="submit">Research this market</button>
+    </form>
+
+    {% if error %}
+      <div class="dv-alert" role="alert">
+        <p>{{ error }}</p>
+        {% if candidates %}
+          <p>Did you mean one of these?</p>
+          <div class="dv-candidates">
+            {% for c in candidates %}
+              <form method="post" action="/app/runs">
+                <input type="hidden" name="market_key" value="{{ c.market_key }}">
+                <button class="btn btn-ghost" type="submit">{{ c.display_name }}</button>
+              </form>
+            {% endfor %}
+          </div>
+        {% endif %}
+      </div>
+    {% endif %}
   </section>
 {% endblock %}
