@@ -13,6 +13,7 @@ class Settings(BaseSettings):
     database_url: str = "postgresql://postgres@localhost:5432/dvantora"
     # Google Ads OAuth/API configuration is loaded from the local .env file.
     google_ads_client_id: str = Field(default="", validation_alias="GOOGLE_ADS_CLIENT_ID")
+    google_places_api_key: str = Field(default="", validation_alias="GOOGLE_PLACES_API_KEY")
     google_ads_client_secret: str = Field(default="", validation_alias="GOOGLE_ADS_CLIENT_SECRET")
     google_ads_refresh_token: str = Field(default="", validation_alias="GOOGLE_ADS_REFRESH_TOKEN")
     google_ads_customer_id: str = Field(default="", validation_alias="GOOGLE_ADS_CUSTOMER_ID")
@@ -23,7 +24,7 @@ class Settings(BaseSettings):
     # 07-data-sources.md §8
     run_budget_cents: int = 75
 
-    # Only "fixture" exists. Real vendors are gated on 07 §12 verification.
+    # "fixture" uses local fixtures; "hybrid" mixes verified live collectors with fixtures.
     collector_mode: str = "fixture"
 
     # ADR-0004. Only "template" exists.
