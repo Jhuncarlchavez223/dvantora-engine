@@ -10,6 +10,7 @@
   <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=Instrument+Serif:ital@0;1&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="{{ url_for('app-static', path='/main.css') }}">
   <link rel="stylesheet" href="{{ url_for('app-static', path='/app.css') }}">
+  {% block head %}{% endblock %}
 </head>
 <body>
   <header class="container dv-header">

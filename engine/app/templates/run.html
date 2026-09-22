@@ -2,6 +2,15 @@
 
 {% block title %}{{ run.market.service.display_name }} — {{ run.market.location.display_name }} · Dvantora{% endblock %}
 
+{# While the run is still going, reload every few seconds. The API sets
+   poll_after_ms to null once the run is finished, so reloading stops by itself.
+   A stopgap for HTMX polling (08 §4); swap in when HTMX is added. #}
+{% block head %}
+  {% if run.poll_after_ms %}
+    <meta http-equiv="refresh" content="{{ (run.poll_after_ms / 1000)|round|int }}">
+  {% endif %}
+{% endblock %}
+
 {% block content %}
   <section class="dv-section">
     <p class="eyebrow">Research run</p>
@@ -36,7 +45,7 @@
     {% if has_report %}
       <p><a class="btn btn-primary" href="/app/runs/{{ run.run_id }}/report">View report</a></p>
     {% else %}
-      <p class="dv-note">This page doesn't update by itself yet — refresh to see progress.</p>
+      <p class="dv-note">This page refreshes every few seconds until the run finishes.</p>
     {% endif %}
     <p><a class="btn btn-ghost" href="/app">Research another market</a></p>
   </section>

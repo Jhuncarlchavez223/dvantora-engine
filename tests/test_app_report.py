@@ -100,3 +100,16 @@ def test_report_before_completion_redirects_to_run_page(client):
 def test_unknown_report_is_a_404_page(client):
     assert client.get(f"/app/runs/{uuid.uuid4()}/report").status_code == 404
     assert client.get("/app/runs/not-a-uuid/report").status_code == 404
+
+
+def test_unfinished_run_page_refreshes_itself(client):
+    run_id = client.post("/api/v1/runs", json=PLUMBING).json()["run_id"]  # queued only
+    html = client.get(f"/app/runs/{run_id}").text
+    assert 'http-equiv="refresh"' in html
+
+
+def test_finished_run_page_stops_refreshing(client):
+    run_id = _completed_run(client, PLUMBING)
+    html = client.get(f"/app/runs/{run_id}").text
+    assert 'http-equiv="refresh"' not in html
+    assert "View report" in html
