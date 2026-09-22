@@ -161,6 +161,44 @@ so one outlier CPC cannot saturate the signal.
 ceiling than the other five and must be described in reports as an estimate derived
 from bidding behaviour and published pricing — never as a measured figure.
 
+#### Reference basket — v1 (approved 2026-09-23)
+
+The live source is Google Ads Keyword Planner historical metrics
+(`engine/collectors/google_ads_value.py`). `cpc` and `cpc_basket_median` are both
+Google's 12-month **average cost per click**, in the market's own location.
+
+**Basket v1** — 12 local, hands-on trades bought by the same kind of customer,
+spanning low- to high-value jobs:
+
+> electrician · plumber · carpenter · painter · roofer · landscaper ·
+> house cleaning · pest control · locksmith · air conditioning repair ·
+> concreter · tiler
+
+**Rules**
+
+1. The trade and the whole basket are priced in **one** Google Ads request.
+2. The trade is **removed from its own basket**, so it is compared only with
+   other trades.
+3. The **median** is used, not the mean, so one inflated trade (for example
+   locksmith emergency call-outs) cannot skew the reference.
+4. At least **8** basket trades must return a price above zero; otherwise the
+   signal is **unavailable** rather than a thin estimate.
+5. Every evidence row stores `basket_version`, each basket trade's price, and the
+   number priced. Changing the basket means a new version (`v2`), so old reports
+   always show which basket produced them.
+
+**First live observation — Plumbing, Brisbane (2026-09-23).** Plumber CPC
+$52.48 AUD against a basket median of $13.63 (11 of 11 priced; median trade:
+concreter), a ratio of 3.85×. That is the highest price in the basket and scores
+**100** after clamping — the raw formula gives about 118. The signal is working
+as designed, but a score pinned at the ceiling cannot separate "expensive" from
+"extremely expensive". Record this for the §8 recalibration review; the curve is
+**not** changed here.
+
+**Candidate for v2:** "painter" returned only $2.11, likely because the single
+word also matches art-related searches. A more specific keyword such as
+"house painter" would be cleaner. It barely moved the v1 median.
+
 ### 4.6 Trends — linear on slope, granularity-penalised
 
 ```
