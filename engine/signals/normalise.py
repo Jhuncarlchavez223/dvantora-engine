@@ -36,6 +36,10 @@ ADVERTISING_PEAK = 0.55
 MOMENTUM_CAP = 15.0
 GROWING_AT = 0.05
 ADVERTISING_CONFIDENCE = 0.70
+# Live source (method 1.1): Google Ads competition_index = share of ad slots
+# filled. One measurement where the full design wants three (count, growth,
+# fill), so confidence is lower. Approved 2026-09-23.
+ADVERTISING_SLOT_FILL_CONFIDENCE = 0.60
 
 # --- 04 §4.4 density --------------------------------------------------------
 DENSITY_HALF_SATURATION = 0.5  # businesses per 10k residents at score 50
@@ -164,8 +168,52 @@ def _competition(p: dict[str, Any]) -> Normalised:
     )
 
 
+def _advertising_slot_fill(p: dict[str, Any]) -> Normalised:
+    """Inverted U over ad-slot fill (04 §4.3, method 1.1).
+
+    Uses Google Ads competition_index (0-100): the share of available ad slots
+    filled. Same curve and peak as the advertiser-count path. There is no growth
+    data, so no momentum bonus or penalty is applied.
+    """
+    ci = p.get("competition_index")
+    if ci is None:
+        return unavailable(SignalKey.ADVERTISING, "no competition index from Google Ads")
+
+    position = _clamp(float(ci) / 100.0, 0.0, 1.0)
+    distance = (position - ADVERTISING_PEAK) / ADVERTISING_PEAK
+    score = _clamp(100.0 * (1.0 - distance**2))
+
+    notes = (
+        "Measured as the share of available ad slots filled (Google Ads competition "
+        "index). Advertiser count and growth are not measured."
+    )
+    if position > ADVERTISING_PEAK:
+        headline = "Ad slots crowded"
+        notes += " Ad space is crowded; entry cost is likely elevated."
+    elif position == 0:
+        headline = "No ads competing"
+        notes += " No ads shown — the market may not monetise."
+    elif score >= 66:
+        headline = "Healthy ad competition"
+    else:
+        headline = "Few ads competing"
+
+    return Normalised(
+        signal=SignalKey.ADVERTISING,
+        score=round(score, 2),
+        band=_band(score),
+        confidence=ADVERTISING_SLOT_FILL_CONFIDENCE,
+        inputs={"competition_index": int(ci), "ad_slot_fill": round(position, 3)},
+        headline=headline,
+        notes=notes,
+    )
+
+
 def _advertising(p: dict[str, Any]) -> Normalised:
     """Inverted U (04 §4.3): zero advertisers is not a free win."""
+    # Live Google Ads evidence carries competition_index, not an advertiser count.
+    if "competition_index" in p and "advertiser_count" not in p:
+        return _advertising_slot_fill(p)
     count = float(p.get("advertiser_count", 0))
     growth = float(p.get("advertiser_growth_90d", 0.0))
 

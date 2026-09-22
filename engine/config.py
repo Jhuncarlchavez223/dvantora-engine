@@ -43,7 +43,7 @@ class Settings(BaseSettings):
 
     # 04-signals-and-scoring.md v1.0 starting priors; recalibrate after ~30 real runs.
     weights_version: str = "1.0"
-    method_version: str = "1.0"
+    method_version: str = "1.1"
     min_coverage_to_score: float = 0.5
 
     dev_account_email: str = "founder@dvantora.local"

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from typing import Any
 
 from google.ads.googleads.client import GoogleAdsClient
 
@@ -13,10 +14,23 @@ from engine.config import settings
 class KeywordMetrics:
     keyword: str
     avg_monthly_searches: int
-    competition_index: int
+    competition_index: int | None  # None when Google has too little data
     average_cpc: float
     low_top_of_page_bid: float
     high_top_of_page_bid: float
+
+
+def _optional_int(message: Any, field: str) -> int | None:
+    """Read an optional numeric field, keeping "not provided" distinct from 0.
+
+    Google returns nothing (not 0) for competition_index when it lacks data.
+    Reading it naively gives 0, which would wrongly mean "no ads at all".
+    """
+    try:
+        present = field in message
+    except TypeError:  # message type without presence support: trust the value
+        present = True
+    return int(getattr(message, field)) if present else None
 
 
 def _client() -> GoogleAdsClient:
@@ -62,7 +76,7 @@ def fetch_keyword_metrics(
     return KeywordMetrics(
         keyword=result.text,
         avg_monthly_searches=int(metrics.avg_monthly_searches),
-        competition_index=int(metrics.competition_index),
+        competition_index=_optional_int(metrics, "competition_index"),
         average_cpc=float(metrics.average_cpc_micros) / 1_000_000,
         low_top_of_page_bid=float(metrics.low_top_of_page_bid_micros) / 1_000_000,
         high_top_of_page_bid=float(metrics.high_top_of_page_bid_micros) / 1_000_000,
@@ -104,7 +118,7 @@ def fetch_keywords_metrics(
             KeywordMetrics(
                 keyword=result.text,
                 avg_monthly_searches=int(metrics.avg_monthly_searches),
-                competition_index=int(metrics.competition_index),
+                competition_index=_optional_int(metrics, "competition_index"),
                 average_cpc=float(metrics.average_cpc_micros) / 1_000_000,
                 low_top_of_page_bid=float(metrics.low_top_of_page_bid_micros) / 1_000_000,
                 high_top_of_page_bid=float(metrics.high_top_of_page_bid_micros) / 1_000_000,

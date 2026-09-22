@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from engine.collectors.base import Collector
 from engine.collectors.fixture import FixtureCollector
+from engine.collectors.google_ads_advertising import GoogleAdsAdvertisingCollector
 from engine.collectors.google_ads_demand import GoogleAdsDemandCollector
 from engine.collectors.google_ads_value import GoogleAdsCustomerValueCollector
 from engine.config import settings
@@ -20,6 +21,7 @@ def build_collectors() -> list[Collector]:
         live: dict[SignalKey, Collector] = {
             SignalKey.DEMAND: GoogleAdsDemandCollector(),
             SignalKey.CUSTOMER_VALUE: GoogleAdsCustomerValueCollector(),
+            SignalKey.ADVERTISING: GoogleAdsAdvertisingCollector(),
         }
         return [live.get(signal) or FixtureCollector(signal) for signal in SignalKey]
 

@@ -48,7 +48,11 @@ def test_live_sources_is_empty_in_fixture_mode():
 def test_live_sources_names_google_ads_signals_in_hybrid_mode(monkeypatch):
     # Only reads the collector list; no collector is run, so nothing calls Google.
     monkeypatch.setattr(settings, "collector_mode", "hybrid")
-    assert live_sources() == {"demand": "google_ads", "customer_value": "google_ads"}
+    assert live_sources() == {
+        "demand": "google_ads",
+        "customer_value": "google_ads",
+        "advertising": "google_ads",
+    }
 
 
 def test_fixture_run_is_reused_when_nothing_is_expected_live(client):
