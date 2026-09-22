@@ -33,7 +33,11 @@
       {% endfor %}
     </ol>
 
-    <p class="dv-note">This page doesn't update by itself yet — refresh to see progress.</p>
+    {% if has_report %}
+      <p><a class="btn btn-primary" href="/app/runs/{{ run.run_id }}/report">View report</a></p>
+    {% else %}
+      <p class="dv-note">This page doesn't update by itself yet — refresh to see progress.</p>
+    {% endif %}
     <p><a class="btn btn-ghost" href="/app">Research another market</a></p>
   </section>
 {% endblock %}

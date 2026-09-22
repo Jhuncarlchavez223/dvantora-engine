@@ -140,3 +140,160 @@
 .dv-stage--failed .dv-stage-status {
   color: #8a2a2a;
 }
+
+/* Report */
+.dv-report {
+  max-width: 52rem;
+}
+
+.dv-banner {
+  margin: 1.25rem 0 2rem;
+  padding: 0.9rem 1.1rem;
+  border-radius: var(--r-md);
+  font-size: 0.95rem;
+}
+
+.dv-banner--example {
+  background: #f6ecd6;
+  border: 1px solid var(--signal-amber);
+}
+
+.dv-banner--mixed {
+  background: #eef3fb;
+  border: 1px solid var(--signal-blue);
+}
+
+.dv-scorecard {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 2rem;
+  padding: 1.5rem 1.75rem;
+  margin: 1rem 0 2.5rem;
+  border: 1px solid var(--line);
+  border-radius: var(--r-lg);
+  background: var(--paper-raise);
+}
+
+.dv-score {
+  font-family: var(--font-serif);
+  font-size: clamp(3rem, 8vw, 4.5rem);
+  line-height: 1;
+  margin: 0;
+}
+
+.dv-score-caption {
+  margin: 0.35rem 0 0;
+  color: var(--ink-3);
+  font-size: 0.9rem;
+}
+
+.dv-verdict {
+  display: inline-block;
+  margin: 0 0 0.5rem;
+  padding: 0.35rem 1rem;
+  border-radius: 999px;
+  font-weight: 600;
+  background: var(--line);
+}
+
+.dv-verdict--pursue {
+  background: var(--accent-tint);
+  color: var(--accent-strong);
+}
+
+.dv-verdict--watch {
+  background: #f6ecd6;
+  color: #7a5714;
+}
+
+.dv-verdict--pass {
+  background: #f5dede;
+  color: #8a2a2a;
+}
+
+.dv-h2 {
+  font-family: var(--font-serif);
+  font-weight: 400;
+  font-size: 1.9rem;
+  margin: 2.5rem 0 0.75rem;
+}
+
+.dv-h3 {
+  font-size: 1rem;
+  margin: 1.5rem 0 0.5rem;
+}
+
+.dv-reasons li,
+.dv-caveats li {
+  margin-bottom: 0.5rem;
+}
+
+.dv-signals {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.dv-signal {
+  padding: 1rem 1.25rem;
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+  background: var(--paper-raise);
+}
+
+.dv-signal p {
+  margin: 0.35rem 0 0;
+}
+
+.dv-signal--missing {
+  background: transparent;
+  border-style: dashed;
+}
+
+.dv-signal-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  font-weight: 600;
+}
+
+.dv-signal-score {
+  font-family: var(--font-mono);
+}
+
+.dv-signal-meta {
+  font-size: 0.88rem;
+  color: var(--ink-3);
+}
+
+.dv-source {
+  font-family: var(--font-mono);
+  font-size: 0.82rem;
+}
+
+.dv-source--example {
+  color: #7a5714;
+}
+
+.dv-facts {
+  padding-left: 1.1rem;
+}
+
+.dv-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 0.75rem 0;
+  font-size: 0.95rem;
+}
+
+.dv-table th,
+.dv-table td {
+  text-align: left;
+  padding: 0.5rem 0.4rem;
+  border-bottom: 1px solid var(--line);
+}
+
+.dv-table th {
+  font-weight: 500;
+  color: var(--ink-3);
+}

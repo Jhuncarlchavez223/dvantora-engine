@@ -1,0 +1,139 @@
+{% extends "base.html" %}
+
+{% block title %}Report: {{ report.market.service.display_name }} — {{ report.market.location.display_name }} · Dvantora{% endblock %}
+
+{% block content %}
+  <section class="dv-section dv-report">
+    <p class="eyebrow">Opportunity report</p>
+    <h1 class="dv-title">{{ report.market.service.display_name }} — {{ report.market.location.display_name }}</h1>
+
+    {# Data-source banner: never let example data pass as a real measurement (00 §7). #}
+    {% if view.data_mode == "example" %}
+      <div class="dv-banner dv-banner--example" role="note">
+        <strong>Example data only.</strong> Every signal in this report comes from local
+        example data, so this is not a real measurement of this market.
+      </div>
+    {% elif view.data_mode == "mixed" %}
+      <div class="dv-banner dv-banner--mixed" role="note">
+        <strong>Mixed sources.</strong> Some signals use live data and some use example
+        data. Signals marked <em>Example data</em> are not real measurements of this
+        market, so the overall score is not a fully live result.
+      </div>
+    {% endif %}
+
+    {# Headline score. Two decimals on purpose: the verdict is decided from this
+       exact value, so rounding it for display could contradict the verdict. #}
+    <div class="dv-scorecard">
+      <div>
+        <p class="dv-score">{{ "%.2f"|format(report.score.opportunity_score) }}</p>
+        <p class="dv-score-caption">Opportunity score, out of 100</p>
+      </div>
+      <div class="dv-scorecard-side">
+        <p class="dv-verdict dv-verdict--{{ report.score.verdict }}">{{ view.verdict_label }}</p>
+        <p class="dv-note">
+          Confidence {{ "%.0f"|format(report.score.confidence * 100) }}% ·
+          {{ view.available_count }} of {{ view.signals|length }} signals available
+        </p>
+      </div>
+    </div>
+
+    <h2 class="dv-h2">Analysis</h2>
+    <p>{{ report.analysis.summary }}</p>
+    {% if report.analysis.reasons %}
+      <ol class="dv-reasons">
+        {% for r in report.analysis.reasons %}
+          <li><strong>{{ r.title }}.</strong> {{ r.body }}</li>
+        {% endfor %}
+      </ol>
+    {% endif %}
+    <p><strong>Recommended action:</strong> {{ report.analysis.recommended_action }}</p>
+    {% if report.analysis.caveats %}
+      <h3 class="dv-h3">Caveats</h3>
+      <ul class="dv-caveats">
+        {% for c in report.analysis.caveats %}<li>{{ c }}</li>{% endfor %}
+      </ul>
+    {% endif %}
+
+    <h2 class="dv-h2">The six signals</h2>
+    <div class="dv-signals">
+      {% for s in view.signals %}
+        <div class="dv-signal{% if s.score is none %} dv-signal--missing{% endif %}">
+          <div class="dv-signal-head">
+            <span class="dv-signal-name">{{ s.label }}</span>
+            {% if s.score is none %}
+              <span class="dv-signal-score">Unavailable</span>
+            {% else %}
+              <span class="dv-signal-score">{{ "%.1f"|format(s.score) }}</span>
+            {% endif %}
+          </div>
+          <p class="dv-signal-meta">
+            {% if s.score is not none %}
+              {{ s.band }} · confidence {{ "%.0f"|format(s.confidence * 100) }}% ·
+            {% endif %}
+            {% if s.source_labels %}
+              <span class="dv-source{% if s.is_example %} dv-source--example{% endif %}">
+                {{ s.source_labels|join(", ") }}
+              </span>
+            {% else %}
+              <span class="dv-source">No source</span>
+            {% endif %}
+          </p>
+          {% if s.headline and s.score is not none %}<p>{{ s.headline }}</p>{% endif %}
+          {% if s.notes %}<p class="dv-note">{{ s.notes }}</p>{% endif %}
+        </div>
+      {% endfor %}
+    </div>
+
+    {% if report.businesses and report.businesses.aggregates %}
+      <h2 class="dv-h2">Local businesses</h2>
+      <p class="dv-note">
+        Source: {{ view.density_source_labels|join(", ") if view.density_source_labels else "Unknown" }}.
+        These are a sample of map listings, not a count of every business in the area.
+      </p>
+      {% set agg = report.businesses.aggregates %}
+      <ul class="dv-facts">
+        {% if agg.get("business_count") is not none %}<li>Businesses in sample: <strong>{{ agg.business_count }}</strong></li>{% endif %}
+        {% if agg.get("rating_mean") is not none %}<li>Average rating: <strong>{{ agg.rating_mean }}</strong></li>{% endif %}
+        {% if agg.get("review_count_median") is not none %}<li>Median review count: <strong>{{ agg.review_count_median }}</strong></li>{% endif %}
+      </ul>
+      {% if report.businesses.available and report.businesses.sample %}
+        <table class="dv-table">
+          <thead><tr><th>Business</th><th>Rating</th><th>Reviews</th></tr></thead>
+          <tbody>
+            {% for b in report.businesses.sample %}
+              <tr><td>{{ b.name }}</td><td>{{ b.rating }}</td><td>{{ b.review_count }}</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+        <p class="dv-note">Individual business details are removed after 30 days; the totals above are kept.</p>
+      {% endif %}
+    {% endif %}
+
+    {% if report.trend %}
+      <h2 class="dv-h2">Trend</h2>
+      <p>Measured at <strong>{{ report.trend.granularity }}</strong> level.</p>
+      {% if report.trend.note %}<p class="dv-note">{{ report.trend.note }}</p>{% endif %}
+    {% endif %}
+
+    <h2 class="dv-h2">Sources and method</h2>
+    <table class="dv-table">
+      <thead><tr><th>Signal</th><th>Source</th></tr></thead>
+      <tbody>
+        {% for s in view.signals %}
+          <tr>
+            <td>{{ s.label }}</td>
+            <td>{{ s.source_labels|join(", ") if s.source_labels else "Unavailable" }}</td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    <ul class="dv-facts">
+      <li>Analysis written by: <strong>{{ "Template (no AI model)" if report.analysis.generator == "template" else report.provenance.model }}</strong></li>
+      <li>Scoring version: <strong>{{ report.provenance.weights_version }}</strong></li>
+      <li>Report generated: <strong>{{ report.generated_at[:16]|replace("T", " ") }} UTC</strong></li>
+      {% if report.data_age_hours is not none %}<li>Data age: <strong>{{ "%.1f"|format(report.data_age_hours) }} hours</strong></li>{% endif %}
+    </ul>
+
+    <p><a class="btn btn-ghost" href="/app">Research another market</a></p>
+  </section>
+{% endblock %}

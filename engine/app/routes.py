@@ -6,8 +6,11 @@ same shared engine functions the JSON API uses. No business logic belongs here
 
 - starting a run goes through engine.pipeline.start.start_run, exactly like
   POST /api/v1/runs;
-- reading a run goes through the API's own get_run, so the app can never show
-  a run differently from the API.
+- reading a run or a report goes through the API's own get_run / get_report,
+  so the app can never show a run differently from the API.
+
+The only extra work done here is presentation: turning stored values into
+labels a person can read (for example, vendor "fixture" -> "Example data").
 """
 
 from __future__ import annotations
@@ -21,6 +24,7 @@ from fastapi.responses import HTMLResponse, RedirectResponse, Response
 from fastapi.templating import Jinja2Templates
 
 from engine.api.deps import current_account
+from engine.api.routes.runs import get_report as api_get_report
 from engine.api.routes.runs import get_run as api_get_run
 from engine.db import connection
 from engine.errors import ApiError
@@ -48,6 +52,28 @@ STAGE_LABELS: dict[str, str] = {
     "analyze": "Written analysis",
     "finalize": "Report",
 }
+
+SIGNAL_LABELS: dict[str, str] = {
+    "demand": "Demand",
+    "competition": "Competition",
+    "advertising": "Advertising activity",
+    "density": "Business density",
+    "customer_value": "Customer value",
+    "trends": "Trends",
+}
+
+VERDICT_LABELS: dict[str, str] = {"pursue": "Pursue", "watch": "Watch", "pass": "Pass"}
+
+# Where each signal's evidence came from. "fixture" is local example data and
+# must always be labelled as such (00 §7). An unknown vendor is shown by name
+# rather than assumed to be live.
+VENDOR_LABELS: dict[str, str] = {
+    "fixture": "Example data",
+    "google_ads": "Google Ads",
+}
+
+# Statuses for which a report exists (02 §5).
+REPORT_STATUSES = {"complete", "partial"}
 
 STATUS_LABELS: dict[str, str] = {
     "queued": "Queued",
@@ -152,7 +178,70 @@ def run_page(request: Request, run_id: str, reused: bool = False) -> Response:
             "reused": reused,
             "stage_labels": STAGE_LABELS,
             "status_labels": STATUS_LABELS,
+            "has_report": run["status"] in REPORT_STATUSES,
         },
+    )
+
+
+def _report_view(report: dict[str, Any]) -> dict[str, Any]:
+    """Add human-readable labels to a stored report. Presentation only."""
+    vendors_by_signal: dict[str, list[str]] = {}
+    for source in report.get("provenance", {}).get("sources", []):
+        vendors_by_signal.setdefault(source["signal"], []).append(source["vendor"])
+
+    signals = []
+    used_vendors: set[str] = set()
+    for s in report.get("signals", []):
+        vendors = sorted(vendors_by_signal.get(s["signal"], []))
+        if s["score"] is not None:
+            used_vendors.update(vendors)
+        signals.append(
+            {
+                **s,
+                "label": SIGNAL_LABELS.get(s["signal"], s["signal"]),
+                "source_labels": [VENDOR_LABELS.get(v, v) for v in vendors],
+                "is_example": "fixture" in vendors,
+            }
+        )
+
+    # Is this report built from live data, example data, or a mix? This drives
+    # the banner, so nobody mistakes an example-data score for a real one.
+    if not used_vendors or used_vendors == {"fixture"}:
+        data_mode = "example"
+    elif "fixture" in used_vendors:
+        data_mode = "mixed"
+    else:
+        data_mode = "live"
+
+    density_vendors = sorted(vendors_by_signal.get("density", []))
+    return {
+        "signals": signals,
+        "data_mode": data_mode,
+        "available_count": sum(1 for s in signals if s["score"] is not None),
+        "density_source_labels": [VENDOR_LABELS.get(v, v) for v in density_vendors],
+        "verdict_label": VERDICT_LABELS.get(report["score"]["verdict"], report["score"]["verdict"]),
+    }
+
+
+@router.get("/app/runs/{run_id}/report", response_class=HTMLResponse)
+def report_page(request: Request, run_id: str) -> Response:
+    """The finished report. Sends the browser back to the run page until ready."""
+    try:
+        uuid.UUID(run_id)
+    except ValueError:
+        return _render_error(request, "That run doesn't exist.", 404)
+
+    try:
+        report = api_get_report(run_id)
+    except ApiError as exc:
+        if exc.code == "report_not_ready":
+            return RedirectResponse(f"/app/runs/{run_id}", status_code=303)
+        return _render_error(request, exc.message, exc.status_code)
+
+    return templates.TemplateResponse(
+        request,
+        "report.html",
+        {"report": report, "view": _report_view(report)},
     )
 
 
