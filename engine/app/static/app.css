@@ -3,8 +3,27 @@
    app-only rules here so that copy can be refreshed without merging. */
 
 .dv-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
   padding-top: 1.5rem;
   padding-bottom: 1.5rem;
+}
+
+.dv-nav {
+  display: flex;
+  gap: 1.25rem;
+  font-size: 0.95rem;
+}
+
+.dv-nav a {
+  color: var(--ink-2);
+  text-decoration: none;
+}
+
+.dv-nav a:hover {
+  color: var(--accent);
 }
 
 .dv-section {

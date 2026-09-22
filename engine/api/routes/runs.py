@@ -241,7 +241,10 @@ def list_runs(limit: int = Query(default=20, le=100)) -> dict[str, Any]:
             SELECT r.id, r.status::text AS status, r.requested_at, r.completed_at,
                    m.market_key, s.display_name AS service_name,
                    l.display_name AS location_name,
-                   sc.opportunity_score, sc.verdict::text AS verdict
+                   sc.opportunity_score, sc.verdict::text AS verdict,
+                   (SELECT array_agg(DISTINCT e.vendor ORDER BY e.vendor)
+                      FROM evidence e
+                     WHERE e.run_id = r.id AND e.status = 'ok') AS data_sources
             FROM research_runs r
             JOIN markets m ON m.id = r.market_id
             JOIN services s ON s.id = m.service_id
@@ -268,7 +271,10 @@ def list_runs(limit: int = Query(default=20, le=100)) -> dict[str, Any]:
                 if r["opportunity_score"] is not None
                 else None,
                 "verdict": r["verdict"],
+                "requested_at": r["requested_at"].isoformat(),
                 "completed_at": r["completed_at"].isoformat() if r["completed_at"] else None,
+                # Vendors whose evidence this run actually used, e.g. ["fixture"].
+                "data_sources": list(r["data_sources"] or []),
             }
             for r in rows
         ],

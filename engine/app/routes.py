@@ -26,6 +26,7 @@ from fastapi.templating import Jinja2Templates
 from engine.api.deps import current_account
 from engine.api.routes.runs import get_report as api_get_report
 from engine.api.routes.runs import get_run as api_get_run
+from engine.api.routes.runs import list_runs as api_list_runs
 from engine.db import connection
 from engine.errors import ApiError
 from engine.pipeline.start import start_run
@@ -183,6 +184,22 @@ def run_page(request: Request, run_id: str, reused: bool = False) -> Response:
     )
 
 
+def _data_mode(vendors: set[str]) -> str:
+    """"example", "mixed" or "live", from the vendors a run actually used."""
+    if not vendors or vendors == {"fixture"}:
+        return "example"
+    if "fixture" in vendors:
+        return "mixed"
+    return "live"
+
+
+DATA_MODE_LABELS: dict[str, str] = {
+    "example": "Example data",
+    "mixed": "Mixed (live + example)",
+    "live": "Live",
+}
+
+
 def _report_view(report: dict[str, Any]) -> dict[str, Any]:
     """Add human-readable labels to a stored report. Presentation only."""
     vendors_by_signal: dict[str, list[str]] = {}
@@ -206,12 +223,7 @@ def _report_view(report: dict[str, Any]) -> dict[str, Any]:
 
     # Is this report built from live data, example data, or a mix? This drives
     # the banner, so nobody mistakes an example-data score for a real one.
-    if not used_vendors or used_vendors == {"fixture"}:
-        data_mode = "example"
-    elif "fixture" in used_vendors:
-        data_mode = "mixed"
-    else:
-        data_mode = "live"
+    data_mode = _data_mode(used_vendors)
 
     density_vendors = sorted(vendors_by_signal.get("density", []))
     return {
@@ -249,3 +261,29 @@ def _render_error(request: Request, message: str, status_code: int) -> Response:
     return templates.TemplateResponse(
         request, "error.html", {"message": message}, status_code=status_code
     )
+
+
+@router.get("/app/markets", response_class=HTMLResponse)
+def markets_page(request: Request) -> Response:
+    """Past runs, newest first, each labelled with where its data came from."""
+    listing = api_list_runs(limit=50)
+    runs = []
+    for item in listing["items"]:
+        finished = item["status"] in REPORT_STATUSES
+        mode = _data_mode(set(item["data_sources"])) if finished else None
+        runs.append(
+            {
+                **item,
+                "status_label": STATUS_LABELS.get(item["status"], item["status"]),
+                "verdict_label": VERDICT_LABELS.get(item["verdict"] or "", ""),
+                # Only label data for finished runs; others have no report yet.
+                "data_label": DATA_MODE_LABELS[mode] if mode else "",
+                "is_example": mode in ("example", "mixed"),
+                "href": (
+                    f"/app/runs/{item['run_id']}/report"
+                    if finished
+                    else f"/app/runs/{item['run_id']}"
+                ),
+            }
+        )
+    return templates.TemplateResponse(request, "markets.html", {"runs": runs})

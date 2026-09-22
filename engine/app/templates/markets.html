@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+
+{% block title %}Past research · Dvantora{% endblock %}
+
+{% block content %}
+  <section class="dv-section dv-report">
+    <p class="eyebrow">Past research</p>
+    <h1 class="dv-title">Markets you've researched</h1>
+
+    {% if runs %}
+      <p class="dv-note">
+        Scores marked <em>Example data</em> or <em>Mixed</em> are not fully live
+        measurements. Open a report to see the source of every signal.
+      </p>
+      <table class="dv-table">
+        <thead>
+          <tr><th>Market</th><th>Status</th><th>Score</th><th>Verdict</th><th>Data</th><th>Requested</th></tr>
+        </thead>
+        <tbody>
+          {% for r in runs %}
+            <tr>
+              <td><a href="{{ r.href }}">{{ r.market.display_name }}</a></td>
+              <td>{{ r.status_label }}</td>
+              <td>{{ "%.2f"|format(r.opportunity_score) if r.opportunity_score is not none else "—" }}</td>
+              <td>{{ r.verdict_label or "—" }}</td>
+              <td><span class="dv-source{% if r.is_example %} dv-source--example{% endif %}">{{ r.data_label or "—" }}</span></td>
+              <td>{{ r.requested_at[:10] }}</td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    {% else %}
+      <p class="lede">No research yet.</p>
+    {% endif %}
+
+    <p><a class="btn btn-primary" href="/app">Research a market</a></p>
+  </section>
+{% endblock %}
