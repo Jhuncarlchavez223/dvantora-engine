@@ -155,16 +155,16 @@ product too, and to anything the AI layer generates:
 | Doc | Status |
 |---|---|
 | `00-overview.md` | This document — draft |
-| `01-architecture.md` | Approved for decisions 1, 2, 3, 5, 6, 7 · open on decision 4 |
+| `01-architecture.md` | **Approved — decisions 1–7** |
 | `02-data-model.md` | **Written — approved** |
 | `03-research-pipeline.md` | Not written |
 | `04-signals-and-scoring.md` | **Written — approved, v1.0 starting priors** |
 | `05-api-contract.md` | **Written — approved** |
-| `06-ai-analysis.md` | Not written |
+| `06-ai-analysis.md` | **Written — approved** |
 | `07-data-sources.md` | **Written — INTERNAL, do not publish** |
-| `08-frontend-integration.md` | Not written |
+| `08-frontend-integration.md` | **Written — approved** |
 | `09-security-privacy.md` | Not written |
-| `adr/0001`–`adr/0006` | Accepted |
+| `adr/0001`–`adr/0007` | Accepted |
 
 `docs/` lives in the private `dvantora-engine` repository, per ADR-0001. It
 must never be committed to the website repository, which deploys from its root
@@ -190,5 +190,5 @@ with crawling allowed; that repo's `.gitignore` excludes `docs/` as a guard.
    ads only for EU/UK and is therefore excluded (`07-data-sources.md` §4.3).
 5. **Early access model** — invite-only with manually created accounts, or
    self-serve signup behind a waitlist gate?
-6. **`app/` frontend stack** — decision 4 in `01-architecture.md`, still open,
-   and the most expensive of the seven to reverse.
+6. ~~`app/` frontend stack~~ — **RESOLVED:** server-rendered FastAPI + Jinja2 +
+   HTMX, same origin as the API (ADR-0007).

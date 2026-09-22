@@ -1,13 +1,13 @@
 # 01 — Technical Architecture (MVP)
 
-**Status:** APPROVED for decisions 1, 2, 3, 5, 6, 7 · OPEN on decision 4
+**Status:** APPROVED — decisions 1–7
 **Last updated:** 2026-08-27
 **Prerequisite reading:** `00-overview.md`
 **Related:** `07-data-sources.md`
 
-Approved decisions are recorded in `docs/adr/`. Section 10 lists what remains
-open. Nothing marked OPEN may be implemented until it is decided and this
-document is updated.
+Approved decisions are recorded in `docs/adr/`. Section 10 lists their status.
+All seven are now decided; a change to any of them requires a new ADR and an
+update to this document.
 
 ---
 
@@ -54,7 +54,10 @@ dvantora-engine/           (to be created)
 │  ├─ ai/                  Provider abstraction, prompt contracts, schemas
 │  ├─ db/                  Models and migrations
 │  └─ tests/
-├─ app/                    Authenticated product UI (app.dvantora.com) — stack OPEN
+│  └─ app/                 Authenticated product UI — server-rendered (ADR-0007)
+│     ├─ routes.py         /app/* HTML endpoints
+│     ├─ templates/        Jinja2, reusing the marketing site's design tokens
+│     └─ static/           main.css and assets
 ├─ automation/             Exported n8n workflow JSON, when n8n is adopted
 └─ README.md  CLAUDE.md
 ```
@@ -70,8 +73,10 @@ dvantora-engine/           (to be created)
   including vendor pricing and cost-per-run economics, would be publicly
   readable at `dvantora.com/docs/…`. Move `docs/` to the engine repo as its
   first commit. See `07-data-sources.md` §11.
-- **The app ships from the engine repo**, so the API contract and the client
-  that consumes it stay in step and are versioned together.
+- **The app ships from the engine process**, not merely the engine repo
+  (ADR-0007). `engine/app/` is server-rendered by the same FastAPI application
+  that serves `/api/v1`, so the UI and the contract cannot drift apart and there
+  is no second build, deploy target or origin.
 - **Cross-repo coupling is limited to one thing:** the public REST contract in
   `05-api-contract.md`. The website never calls the API.
 
@@ -83,11 +88,12 @@ dvantora-engine/           (to be created)
 flowchart TB
     subgraph Client
         SITE["dvantora-website<br/>static marketing"]
-        APP["app/ — product UI<br/>app.dvantora.com"]
+        BROWSER["Browser<br/>app.dvantora.com"]
     end
 
     subgraph Engine["dvantora-engine — Railway"]
-        API["API process<br/>FastAPI"]
+        APP["engine/app<br/>Jinja + HTMX — /app/*"]
+        API["API process<br/>FastAPI — /api/v1"]
         WORKER["Worker process<br/>pipeline stages"]
         COLL["Collectors<br/>one per source"]
         SIGNALS["Signal normalisation<br/>+ scoring — pure code"]
@@ -106,15 +112,17 @@ flowchart TB
 
     N8N["n8n — OPTIONAL<br/>never in the critical path"]
 
-    APP -->|"HTTPS + JWT"| API
-    APP -.->|"login"| AUTH
+    BROWSER -->|"HTML + HTMX polling"| APP
+    BROWSER -.->|"login"| AUTH
+    APP -->|"same process, same origin"| API
+    APP --> DB
     API --> DB
     WORKER -->|"claim run"| DB
     WORKER --> COLL --> SRC
     WORKER --> SIGNALS --> DB
     SIGNALS --> AI --> LLM
     AI --> DB
-    API -->|"status / report"| APP
+    API -->|"status / report (automation, future clients)"| BROWSER
     API -.->|"outbound events, if configured"| N8N
     N8N -.->|"public API + service token"| API
     SITE -.->|"forms, if configured"| N8N
@@ -128,8 +136,8 @@ works end to end.
 | Component | Technology | Responsibility |
 |---|---|---|
 | Marketing site | Static HTML/CSS/JS, existing repo | Marketing only |
-| `app/` | **OPEN — decision 4** | Authenticated UI: new analysis, run progress, report, market list |
-| API process | Python 3.12 + FastAPI | Auth validation, market resolution, enqueue, read endpoints, outbound events |
+| `engine/app/` | FastAPI + Jinja2 + HTMX, server-rendered (ADR-0007) | Authenticated UI: new analysis, run progress, report, market list |
+| API process | Python 3.12 + FastAPI | Auth validation, market resolution, enqueue, read endpoints, outbound events. Also serves `engine/app/` |
 | Worker process | Same codebase, separate Railway service | Executes pipeline stages, writes evidence, triggers scoring and AI |
 | Database | Supabase Postgres | Single source of truth. Also the job queue. |
 | Auth | Supabase Auth | Signup, login, password reset, JWT issuance |
@@ -323,13 +331,28 @@ email API called directly from the engine; both are behind the same event seam.
 
 ## 8. Frontend ↔ backend communication
 
-- **Transport:** HTTPS JSON REST, versioned prefix `/api/v1`.
-- **Auth:** Supabase-issued JWT bearer token; the API validates it and resolves
-  the account. The marketing site is unauthenticated and never calls the API.
-- **Async model:** `POST /api/v1/runs` returns `202` with a `run_id`; the app
-  polls `GET /api/v1/runs/{id}` roughly every 3 s for status and stage progress.
-  No websockets in the MVP — polling is simpler, survives reconnects, and the
-  stage list is exactly what the progress timeline needs.
+Two surfaces, one process (ADR-0007):
+
+| Surface | Prefix | Consumer | Returns |
+|---|---|---|---|
+| App | `/app/*` | The user's browser | HTML and HTMX fragments |
+| API | `/api/v1/*` | Automation, service tokens, future clients | JSON |
+
+- **Transport:** HTTPS. JSON REST on `/api/v1`; HTML on `/app`.
+- **Same origin.** Both are served by the same FastAPI application, so there is
+  no CORS configuration, no preflight, and no cross-origin token handling.
+- **Auth:** the app uses a Supabase session cookie validated server-side; the API
+  uses a Supabase-issued JWT bearer token or a service token. Both resolve to the
+  same account through one dependency. The marketing site is unauthenticated and
+  never calls either surface.
+- **The API is not bypassed.** App routes call the same internal functions the
+  API routes call; they never reimplement business logic
+  (`08-frontend-integration.md`).
+- **Async model:** starting a run returns immediately; the browser polls for
+  status roughly every 3 s. On the app surface that is one HTMX attribute
+  (`hx-trigger="every 3s"`) swapping a rendered fragment; on the API surface it is
+  `GET /api/v1/runs/{id}`. No websockets in the MVP — polling is simpler, survives
+  reconnects, and the stage list is exactly what the timeline needs.
 - **Report:** `GET /api/v1/runs/{id}/report` returns structured data, not HTML.
   The same payload drives the dashboard, the analysis view and the report view.
 - **Errors:** `{error: {code, message, details}}` with stable machine-readable
@@ -365,7 +388,7 @@ Full endpoint and payload specification: `05-api-contract.md`.
 | 1 | Repository layout | **APPROVED** | Separate `dvantora-engine` repo; website repo untouched; `docs/` moves to the engine repo — ADR-0001 |
 | 2 | Database and auth | **APPROVED** | Supabase (Postgres + Auth) — ADR-0002 |
 | 3 | Engine hosting | **APPROVED** | Railway, one web + one worker service, plain Dockerfile — ADR-0003 |
-| 4 | `app/` frontend stack | **OPEN** | Not decided. Recommendation stands: static SPA reusing the marketing site's design tokens. **Highest reversal cost of the seven — do not start the app until decided** |
+| 4 | `app/` frontend stack | **APPROVED** | Server-rendered from the engine: FastAPI + Jinja2 + HTMX, same origin as the API — ADR-0007 |
 | 5 | LLM provider | **APPROVED** | Behind a provider abstraction; provider and model are configuration — ADR-0004 |
 | 6 | Freshness window | **APPROVED** | 7 days, configurable globally and per source, user-forcible re-run — ADR-0005 |
 | 7 | n8n | **APPROVED** | Optional integration layer, no paid subscription, engine never depends on it — ADR-0006 |
@@ -380,5 +403,6 @@ Full endpoint and payload specification: `05-api-contract.md`.
 | Stage behaviour, retries, concurrency, cost ceilings, queue mode | `03-research-pipeline.md` |
 | Signal definitions, normalisation curves, weights, verdict thresholds | `04-signals-and-scoring.md` |
 | Endpoint and payload specification | `05-api-contract.md` |
-| Prompt contracts, output schemas, eval set | `06-ai-analysis.md` |
+| Prompt contracts, output schemas, eval set | `06-ai-analysis.md` ✅ written |
+| App routes, session handling, polling contract | `08-frontend-integration.md` |
 | Vendor selection, pricing, terms, extracted fields | `07-data-sources.md` ✅ written |

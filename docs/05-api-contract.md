@@ -16,7 +16,7 @@ access (ADR-0006).
 
 | | |
 |---|---|
-| **Base URL** | `https://api.dvantora.com/api/v1` |
+| **Base URL** | `https://app.dvantora.com/api/v1` (same origin as the app — ADR-0007) |
 | **Content type** | `application/json; charset=utf-8` |
 | **Auth** | `Authorization: Bearer <supabase-jwt>` |
 | **Time** | RFC 3339, always UTC, always `Z` |
@@ -368,10 +368,12 @@ correctly.
 
 ## 11. Open questions
 
-1. **`api.dvantora.com` vs `app.dvantora.com/api`.** A subdomain needs CORS and
-   preflight; a path avoids it if the app is served from the same origin. This
-   depends on decision 4, which is still open — so the base URL above is
-   provisional.
+1. ~~**`api.dvantora.com` vs `app.dvantora.com/api`**~~ — **RESOLVED (ADR-0007).**
+   The app is server-rendered by the same FastAPI application, so the API is
+   served **same-origin** at `app.dvantora.com/api/v1`. No CORS configuration, no
+   preflight, no cross-origin token handling. `api.dvantora.com` may later be
+   added as an alias for automation clients; if it is, CORS becomes a live concern
+   again and this section must be revisited.
 2. **Evidence exposure.** §7 shows normalised vendor payloads to users. Confirm
    this is acceptable against vendor terms before it ships; the safer default is
    to expose provenance metadata without the payload body.
