@@ -2,6 +2,7 @@
 
 **Status:** Accepted
 **Date:** 2026-08-27
+**Amended:** 2026-09-23 (see Amendment below)
 
 ## Context
 
@@ -32,3 +33,30 @@ globally and per source, and is never a literal in pipeline code.
 Trivial, because it is configuration from day one. The dependency that is *not*
 trivial is canonical market resolution, which is why it is specified in
 `00-overview.md` §2 rather than left to implementation.
+
+## Amendment — 2026-09-23: reuse only runs built from matching sources
+
+**Context.** Once the first live collector existed (Google Ads for Demand), a
+recent run built entirely from example (fixture) data could satisfy a request
+that expected live data. Reports stayed honestly labelled, but a user asking
+for live research could silently receive example data for up to 7 days.
+
+**Decision.** A recent run satisfies a new request only if, for every signal the
+engine currently collects from a live source, that run's evidence for the signal
+came from the same vendor. With no live sources configured (fixture mode), any
+recent run qualifies, as before.
+
+This is decided from the **stored evidence** — what actually happened — not from
+a mode recorded when the run was requested. The API and the worker can run in
+different collector modes, so a request-time label could be wrong.
+
+Implemented by `engine.collectors.live_sources()` and the `required_sources`
+check in `engine.pipeline.queue.find_fresh_run`.
+
+**Consequences.**
+
+- An example-data run is never returned in place of live data.
+- A genuinely live run is still reused, so quota and cost savings are kept.
+- Changing a signal's source later (for example, adding Places for Business
+  Density) automatically stops older runs from being reused for that signal.
+- No database schema change was needed.
