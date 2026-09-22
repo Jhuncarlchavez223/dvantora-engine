@@ -16,6 +16,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any
 
+from engine.collectors import live_sources
 from engine.db import Conn, require
 from engine.enums import RunTrigger
 from engine.errors import invalid_request, quota_exceeded
@@ -71,7 +72,8 @@ def start_run(
     )
 
     if not force_refresh:
-        fresh = queue.find_fresh_run(conn, res.market_id)
+        # Only reuse a run built from the same live sources we'd use now.
+        fresh = queue.find_fresh_run(conn, res.market_id, live_sources())
         if fresh:
             conn.commit()
             return StartedRun(

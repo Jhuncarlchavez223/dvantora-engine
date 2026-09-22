@@ -12,20 +12,43 @@ from engine.enums import RunStatus, RunTrigger
 from engine.errors import run_in_progress
 
 
-def find_fresh_run(conn: Conn, market_id: str) -> dict[str, Any] | None:
-    """ADR-0005 — the freshness lookup this index exists for."""
+def find_fresh_run(
+    conn: Conn,
+    market_id: str,
+    required_sources: dict[str, str] | None = None,
+) -> dict[str, Any] | None:
+    """ADR-0005 — the freshness lookup this index exists for.
+
+    `required_sources` maps each signal the engine currently collects live to
+    the vendor that collects it, e.g. {"demand": "google_ads"}. A recent run is
+    only returned if none of its evidence for those signals came from a
+    different vendor. This stops an example-data (fixture) run from being reused
+    when live data was expected. With no required sources, any recent run
+    qualifies (the original behaviour).
+    """
+    required = required_sources or {}
+    signals = list(required)
+    vendors = [required[s] for s in signals]
     return conn.execute(
         """
-        SELECT id, status, completed_at,
-               EXTRACT(EPOCH FROM (now() - completed_at)) / 3600.0 AS age_hours
-        FROM research_runs
-        WHERE market_id = %s
-          AND status IN ('complete','partial')
-          AND completed_at > now() - make_interval(hours => %s)
-        ORDER BY completed_at DESC
+        SELECT r.id, r.status, r.completed_at,
+               EXTRACT(EPOCH FROM (now() - r.completed_at)) / 3600.0 AS age_hours
+        FROM research_runs r
+        WHERE r.market_id = %s
+          AND r.status IN ('complete','partial')
+          AND r.completed_at > now() - make_interval(hours => %s)
+          AND NOT EXISTS (
+              SELECT 1
+              FROM evidence e
+              JOIN unnest(%s::text[], %s::text[]) AS req(signal, vendor)
+                ON e.signal::text = req.signal
+              WHERE e.run_id = r.id
+                AND e.vendor <> req.vendor
+          )
+        ORDER BY r.completed_at DESC
         LIMIT 1
         """,
-        (market_id, settings.freshness_window_hours),
+        (market_id, settings.freshness_window_hours, signals, vendors),
     ).fetchone()
 
 

@@ -6,6 +6,9 @@ from engine.collectors.google_ads_demand import GoogleAdsDemandCollector
 from engine.config import settings
 from engine.enums import SignalKey
 
+# Vendor name used by local example data. Anything else is a live source.
+FIXTURE_VENDOR = "fixture"
+
 
 def build_collectors() -> list[Collector]:
     if settings.collector_mode == "fixture":
@@ -20,3 +23,20 @@ def build_collectors() -> list[Collector]:
         ]
 
     raise ValueError(f"Unsupported collector mode: {settings.collector_mode}")
+
+
+def live_sources() -> dict[str, str]:
+    """Signals the current mode collects live, mapped to the vendor collecting them.
+
+    Example in hybrid mode: {"demand": "google_ads"}. In fixture mode: {}.
+
+    The freshness check uses this so a recent run is only reused when it was built
+    from the same live sources the engine would use now — never an example-data
+    run in place of a live one. Building the collector list makes no network calls.
+    """
+    sources: dict[str, str] = {}
+    for collector in build_collectors():
+        vendor = getattr(collector, "vendor", FIXTURE_VENDOR)
+        if vendor != FIXTURE_VENDOR:
+            sources[collector.signal.value] = vendor
+    return sources
